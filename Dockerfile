@@ -1,7 +1,7 @@
 #syntax=docker/dockerfile:1
 
-# Versions
-FROM dunglas/frankenphp:1-php8.4 AS frankenphp_upstream
+# Use a specific PHP 8.3 image as the base. You can change the version as needed.
+FROM dunglas/frankenphp:1-php8.3 AS frankenphp_upstream
 
 # The different stages of this Dockerfile are meant to be built into separate images
 # https://docs.docker.com/develop/develop-images/multistage-build/#stop-at-a-specific-build-stage
@@ -31,22 +31,39 @@ RUN set -eux; \
 		zip \
 	;
 
+	
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Transport to use by Mercure (default to Bolt)
-ENV MERCURE_TRANSPORT_URL=bolt:///data/mercure.db
+# Add Node.js and npm to the container (REQUIRED FOR SPEC KIT AND WEBPACK ENCORE)
+# This uses the NodeSource repository for a reliable, up-to-date installation.
+ARG NODE_VERSION=20 
+RUN apt-get update \
+    && apt-get install -y ca-certificates curl gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_VERSION.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && npm install -g yarn \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
+# Add Spec Kit CLI tools (uv for package management, spec-cli)
+# This is based on the GitHub Spec Kit installation guide
+RUN apt-get update && apt-get install -y python3-pip python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install uv \
+    && uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
 
-###> recipes ###
-###< recipes ###
-
-COPY --link frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
-COPY --link --chmod=755 frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+# Copy the custom Caddyfile (ensure you have one in frankenphp/Caddyfile)
 COPY --link frankenphp/Caddyfile /etc/frankenphp/Caddyfile
 
 ENTRYPOINT ["docker-entrypoint"]
+
+###> doctrine/doctrine-bundle ###
+#RUN install-php-extensions pdo_pgsql
+RUN install-php-extensions pdo_mysql
+###< doctrine/doctrine-bundle ###
 
 HEALTHCHECK --start-period=60s CMD curl -f http://localhost:2019/metrics || exit 1
 CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile" ]
@@ -72,6 +89,7 @@ CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch" ]
 # Prod FrankenPHP image
 FROM frankenphp_base AS frankenphp_prod
 
+ENV APP_TINI_NO_REAPER=true
 ENV APP_ENV=prod
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
@@ -79,16 +97,24 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY --link frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 
 # prevent the reinstallation of vendors at every changes in the source code
-COPY --link composer.* symfony.* ./
+COPY --link composer.* symfony.lock ./
 RUN set -eux; \
-	composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress
-
-# copy sources
-COPY --link --exclude=frankenphp/ . ./
-
-RUN set -eux; \
-	mkdir -p var/cache var/log; \
+	composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts; \
 	composer dump-autoload --classmap-authoritative --no-dev; \
-	composer dump-env prod; \
-	composer run-script --no-dev post-install-cmd; \
-	chmod +x bin/console; sync;
+	composer run-script post-install-cmd; \
+	composer clear-cache;
+
+# Copy source code
+COPY --link . /app
+
+# Uncomment this section if you use Symfony Encore to build CSS and JavaScript files
+# (and add Node.js to the base image)
+RUN set -eux; \
+    npm install; \
+    npm run build; \
+    rm -rf node_modules;
+
+# Copy the Caddyfile (ensure you have one in frankenphp/Caddyfile)
+COPY --link frankenphp/Caddyfile /etc/frankenphp/Caddyfile
+
+CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/CDfile" ]
