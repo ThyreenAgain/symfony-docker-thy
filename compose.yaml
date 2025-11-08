@@ -8,6 +8,9 @@ services:
     build:
       context: .
       target: frankenphp_prod # Use the prod stage for default
+    # FIX: Explicitly set the command to run the Caddy server binary, 
+    # resolving the "docker-entrypoint: executable file not found" error.
+    command: ["/usr/bin/caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
       MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
@@ -25,7 +28,7 @@ services:
 
   database:
     image: mysql:${MYSQL_VERSION:-8}
-    # The setup script will replace this ports line with the user-defined host port: ${DB_HOST_PORT}:3306
+    # NOTE: The setup script will replace this ports line with the user-defined host port: ${DB_HOST_PORT}:3306
     ports:
       - "3306:3306"
     environment:
@@ -35,6 +38,7 @@ services:
       MYSQL_USER: ${MYSQL_USER:-} # App user
       MYSQL_CHARSET: ${MYSQL_CHARSET:-utf8mb4}
     volumes:
+      # CRITICAL: This volume name must match your existing one to reuse data
       # The setup script will replace 'machinistmate_volume' with a unique name
       - machinistmate_volume:/var/lib/mysql
 
