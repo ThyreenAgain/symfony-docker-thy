@@ -49,11 +49,25 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Add Spec Kit CLI tools (uv for package management, spec-cli)
-# This is based on the GitHub Spec Kit installation guide
-RUN apt-get update && apt-get install -y python3-pip python3-venv \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install uv \
-    && uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+# 4. Install Specify-CLI dependencies (Uses a Virtual Environment for PEP 668 compliance)
+# Note: We still install python3-pip and python3-venv globally first.
+RUN VENV_DIR=/opt/venv/specify-cli && \
+    # 1. Install dependencies, create venv, and clean up apt cache
+    apt-get update && apt-get install -y python3-pip python3-venv && \
+    python3 -m venv ${VENV_DIR} && \
+    rm -rf /var/lib/apt/lists/* && \
+    \
+    # 2. Use the venv's pip to install uv
+    echo "Installing uv into virtual environment..." && \
+    ${VENV_DIR}/bin/pip install --no-cache-dir uv && \
+    \
+    # 3. Use the venv's uv to install specify-cli
+    echo "Installing specify-cli into virtual environment..." && \
+    ${VENV_DIR}/bin/uv tool install specify-cli --from git+https://github.com/github/spec-kit.git && \
+    \
+    # 4. Create a symlink so the command is available system-wide
+    echo "Creating system symlink for specify-cli..." && \
+    ln -s ${VENV_DIR}/bin/specify-cli /usr/local/bin/specify-cli
 
 # Copy the custom Caddyfile (ensure you have one in frankenphp/Caddyfile)
 COPY --link frankenphp/Caddyfile /etc/frankenphp/Caddyfile
