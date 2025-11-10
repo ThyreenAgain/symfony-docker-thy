@@ -39,6 +39,47 @@ The project uses multiple Docker Compose files that can be combined:
 
 Access web UI: `http://localhost:8025`
 
+#### 💡 Sharing Mailpit Across Multiple Projects
+
+**Mailpit is stateless** - unlike a database, it doesn't store project-specific data. You can use **ONE shared Mailpit instance** for ALL your projects!
+
+**Benefits:**
+- ✅ Use less Docker resources (memory, CPU)
+- ✅ No port conflicts when running multiple projects
+- ✅ See emails from all projects in one place
+- ✅ Simpler setup
+
+**How to share:**
+
+1. **Run ONE Mailpit container** (standalone or from one project):
+   ```bash
+   # Standalone Mailpit (recommended)
+   docker run -d --name mailpit \
+     -p 1025:1025 \
+     -p 8025:8025 \
+     --restart unless-stopped \
+     axllent/mailpit
+   ```
+
+2. **Configure ALL projects to use it:**
+   ```bash
+   # In each project's .env.dev.local
+   MAILER_DSN=smtp://host.docker.internal:1025
+   ```
+
+3. **Skip Mailpit during setup:**
+   - When setup.sh asks "Enable Mailer/Mailpit?", answer **n** (no)
+   - Manually add to `.env.dev.local`: `MAILER_DSN=smtp://host.docker.internal:1025`
+
+**Important Note:** Use `host.docker.internal` (not `localhost`) to access the host's Mailpit from inside Docker containers.
+
+**Example - Your current setup:**
+```
+You have: mailer-1 (63309:1025) from "Cycling" project
+Solution: Skip Mailpit in new projects, configure:
+         MAILER_DSN=smtp://host.docker.internal:63309
+```
+
 ### ⚡ Mercure Hub
 
 **What it does:**

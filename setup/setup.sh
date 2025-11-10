@@ -97,6 +97,22 @@ check_port() {
             echoc "33" "   ⚠ PowerShell not available - cannot check Windows ports"
             echoc "36" "   💡 Install PowerShell in WSL or run script from Windows"
         fi
+        
+        # Also check Docker containers for port mappings
+        echoc "36" "   🐳 Checking Docker Desktop for containers using port $port..."
+        if command -v docker &> /dev/null; then
+            # Check if any Docker container has this port mapped (either as host or container port)
+            local docker_port_check=$(docker ps --format "{{.Names}}: {{.Ports}}" 2>/dev/null | grep -E ":${port}->|:${port}/" | head -1)
+            
+            if [ -n "$docker_port_check" ]; then
+                echoc "33" "   ⚠ Port $port is being used by a Docker container!"
+                echoc "33" "   Container: $docker_port_check"
+                echoc "33" "   💡 Docker Desktop port mappings detected - choose a different port"
+                return 1
+            else
+                echoc "32" "   ✓ No Docker containers using port $port"
+            fi
+        fi
     fi
     
     # Return result based on detection
@@ -186,11 +202,28 @@ echo "--- Optional Features ---"
 echoc "36" "The following features can be added to your project:"
 echo ""
 
+# Check for existing Mailpit instances
+EXISTING_MAILPIT=""
+if command -v docker &> /dev/null; then
+    EXISTING_MAILPIT=$(docker ps --filter "ancestor=axllent/mailpit" --format "{{.Names}}: {{.Ports}}" 2>/dev/null | head -1)
+fi
+
 # Ask about Mailer
 echoc "36" "📧 Mailer (Mailpit):"
 echoc "36" "   Email testing service with web UI to catch and inspect emails."
 echoc "36" "   Useful for testing email functionality in development."
-read -p "   Enable Mailer/Mailpit? (y/n, default: y): " ENABLE_MAILER
+
+if [ -n "$EXISTING_MAILPIT" ]; then
+    echoc "33" ""
+    echoc "33" "   ⚠ EXISTING MAILPIT DETECTED: $EXISTING_MAILPIT"
+    echoc "32" "   💡 TIP: Mailpit is stateless - you can share ONE instance across ALL projects!"
+    echoc "36" "   If you skip Mailpit here, configure this project to use the existing one:"
+    echoc "36" "   Add to .env.dev.local: MAILER_DSN=smtp://host.docker.internal:<port>"
+    echoc "36" "   (Replace <port> with the SMTP port from above, usually 1025 or 63309)"
+    echo ""
+fi
+
+read -p "   Enable Mailer/Mailpit for THIS project? (y/n, default: y): " ENABLE_MAILER
 ENABLE_MAILER=${ENABLE_MAILER:-y}
 echo ""
 

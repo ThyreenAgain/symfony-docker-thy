@@ -109,6 +109,8 @@ chmod +x setup.sh
 - View emails at `http://localhost:8025`
 - **When to enable:** Your app sends emails
 
+💡 **Pro Tip:** Mailpit is stateless - you can share ONE Mailpit instance across ALL projects to save resources and avoid port conflicts. See [Sharing Mailpit](OPTIONAL_FEATURES.md#-sharing-mailpit-across-multiple-projects) for details.
+
 #### ⚡ Mercure Hub
 - Real-time messaging (Server-Sent Events)
 - Live updates without polling
@@ -234,6 +236,20 @@ make up
 
 # Both run simultaneously without conflicts!
 ```
+
+### 💡 Sharing Mailpit Across Projects
+
+**Best Practice:** Use ONE shared Mailpit for ALL projects instead of running separate instances:
+
+```bash
+# Run one standalone Mailpit
+docker run -d --name mailpit -p 1025:1025 -p 8025:8025 --restart unless-stopped axllent/mailpit
+
+# In each project's .env.dev.local, skip Mailpit and add:
+MAILER_DSN=smtp://host.docker.internal:1025
+```
+
+**Why?** Mailpit is stateless (just catches emails temporarily) - unlike databases which store project-specific data. One instance is enough for development. See [OPTIONAL_FEATURES.md](OPTIONAL_FEATURES.md#-sharing-mailpit-across-multiple-projects) for detailed instructions.
 
 ## Documentation
 
