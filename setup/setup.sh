@@ -186,30 +186,26 @@ prompt_for_port() {
             continue
         fi
         
-        # Show checking indicator
-        echo -n "Checking if port $input_port is available..."
+        # Show checking indicator and flush output
+        printf "Checking if port %s is available...\n" "$input_port"
         
         # Check if port is available
         if check_port $input_port "$service_name"; then
-            echo -e "\r\033[K" # Clear the line
             echoc "32" "✓ Port $input_port is available and will be used"
             selected_port=$input_port
             echo ""
             break
         else
-            echo -e "\r\033[K" # Clear the line
             echoc "31" "✗ Port not available"
-            
-            # Port in use - find and suggest alternative
-            echo -n "Finding next available port..."
+            echo "Finding next available port..."
             local suggested=$(find_available_port $((input_port + 1)))
-            echo -e "\r\033[K" # Clear the line
             
             echoc "33" "⚠ Port $input_port is already in use."
             read -p "   Do you want to use port $suggested instead? (y/n): " use_suggested
+            use_suggested=$(echo "$use_suggested" | tr '[:upper:]' '[:lower:]')
             echo ""
             
-            if [[ "$use_suggested" =~ ^[Yy]$ ]]; then
+            if [[ "$use_suggested" == "y" ]]; then
                 selected_port=$suggested
                 echoc "32" "✓ Using port $suggested"
                 echo ""
@@ -270,12 +266,36 @@ echoc "36" "  Example: 'invoice_app' becomes 'invoice-app-php-1', 'invoice-app_d
 echo ""
 
 # --- Get Project Name ---
-read -p "Enter a unique project name (e.g., 'invoice_app'): " APP_NAME
-
-if [ -z "$APP_NAME" ]; then
-    echoc "31" "Project name cannot be empty."
-    exit 1
-fi
+while true; do
+    read -p "Enter a unique project name (e.g., 'invoice_app'): " APP_NAME
+    
+    if [ -z "$APP_NAME" ]; then
+        echoc "31" "⚠ Project name cannot be empty."
+        continue
+    fi
+    
+    # Convert to lowercase and sanitize (keep only alphanumeric, underscore, hyphen)
+    SANITIZED_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+    
+    if [ "$APP_NAME" != "$SANITIZED_NAME" ]; then
+        echoc "33" "⚠ Project name contained invalid characters. Converting to: $SANITIZED_NAME"
+        APP_NAME="$SANITIZED_NAME"
+    fi
+    
+    # Check if name starts with letter or underscore (Docker requirement)
+    if ! [[ "$APP_NAME" =~ ^[a-z_] ]]; then
+        echoc "31" "⚠ Project name must start with a letter or underscore."
+        continue
+    fi
+    
+    if [ -z "$APP_NAME" ]; then
+        echoc "31" "⚠ Project name became empty after sanitization."
+        continue
+    fi
+    
+    echoc "32" "✓ Project name: $APP_NAME"
+    break
+done
 
 # --- Set Custom Git Repository URL (Hardcoded) ---
 GIT_REPO_URL="https://github.com/ThyreenAgain/symfony-docker-thy"
@@ -293,13 +313,13 @@ echoc "36" "   Email testing service with web UI to catch and inspect emails."
 echoc "36" "   Useful for testing email functionality in development."
 echo ""
 read -p "   Do you want to use Mailpit for email testing? (y/n, default: y): " WANT_MAILPIT
-WANT_MAILPIT=${WANT_MAILPIT:-y}
+WANT_MAILPIT=$(echo "${WANT_MAILPIT:-y}" | tr '[:upper:]' '[:lower:]')
 echo ""
 
 ENABLE_MAILER=n
 SHARED_MAILPIT_CREATED=false
 
-if [[ "$WANT_MAILPIT" =~ ^[Yy]$ ]]; then
+if [[ "$WANT_MAILPIT" == "y" ]]; then
     # Check for existing Mailpit instances
     EXISTING_MAILPIT=""
     if command -v docker &> /dev/null; then
@@ -317,9 +337,9 @@ if [[ "$WANT_MAILPIT" =~ ^[Yy]$ ]]; then
         echoc "36" "   2. Create a separate Mailpit for this project"
         echo ""
         read -p "   Use existing shared Mailpit? (y/n, default: y): " USE_EXISTING
-        USE_EXISTING=${USE_EXISTING:-y}
+        USE_EXISTING=$(echo "${USE_EXISTING:-y}" | tr '[:upper:]' '[:lower:]')
         
-        if [[ "$USE_EXISTING" =~ ^[Yy]$ ]]; then
+        if [[ "$USE_EXISTING" == "y" ]]; then
             echoc "32" "   ✓ Will configure project to use existing shared Mailpit"
             ENABLE_MAILER=n
         else
@@ -335,9 +355,9 @@ if [[ "$WANT_MAILPIT" =~ ^[Yy]$ ]]; then
         echoc "36" "   2. Create Mailpit inside THIS project's compose stack"
         echo ""
         read -p "   Create a shared standalone Mailpit? (y/n, default: y): " CREATE_SHARED
-        CREATE_SHARED=${CREATE_SHARED:-y}
+        CREATE_SHARED=$(echo "${CREATE_SHARED:-y}" | tr '[:upper:]' '[:lower:]')
         
-        if [[ "$CREATE_SHARED" =~ ^[Yy]$ ]]; then
+        if [[ "$CREATE_SHARED" == "y" ]]; then
             echoc "36" ""
             echoc "36" "   Creating shared Mailpit container..."
             
@@ -376,18 +396,56 @@ echoc "36" "⚡ Mercure Hub:"
 echoc "36" "   Real-time messaging for live updates (Server-Sent Events)."
 echoc "36" "   Only needed if you're building apps with real-time features."
 read -p "   Enable Mercure? (y/n, default: n): " ENABLE_MERCURE
-ENABLE_MERCURE=${ENABLE_MERCURE:-n}
+ENABLE_MERCURE=$(echo "${ENABLE_MERCURE:-n}" | tr '[:upper:]' '[:lower:]')
 echo ""
 
 # --- Get DB Credentials ---
 echo "--- Database Configuration ---"
-read -p "Enter MySQL Database Name (Default: '${APP_NAME}_db'): " DB_DATABASE
-DB_DATABASE=${DB_DATABASE:-"${APP_NAME}_db"}
 
-# Set default MySQL User based on the project name (lowercase)
-DEFAULT_DB_USER=$(echo "${APP_NAME}_user" | tr '[:upper:]' '[:lower:]')
-read -p "Enter MySQL User (Default: '${DEFAULT_DB_USER}'): " DB_USER
-DB_USER=${DB_USER:-"${DEFAULT_DB_USER}"}
+# Database Name
+while true; do
+    read -p "Enter MySQL Database Name (Default: '${APP_NAME}_db'): " DB_DATABASE
+    DB_DATABASE=${DB_DATABASE:-"${APP_NAME}_db"}
+    
+    # Sanitize: lowercase, only alphanumeric and underscore
+    SANITIZED_DB=$(echo "$DB_DATABASE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')
+    
+    if [ "$DB_DATABASE" != "$SANITIZED_DB" ]; then
+        echoc "33" "⚠ Database name contained invalid characters. Converting to: $SANITIZED_DB"
+        DB_DATABASE="$SANITIZED_DB"
+    fi
+    
+    if [ -z "$DB_DATABASE" ]; then
+        echoc "31" "⚠ Database name cannot be empty."
+        continue
+    fi
+    
+    echoc "32" "✓ Database name: $DB_DATABASE"
+    break
+done
+
+# Database User
+DEFAULT_DB_USER=$(echo "${APP_NAME}_user" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')
+while true; do
+    read -p "Enter MySQL User (Default: '${DEFAULT_DB_USER}'): " DB_USER
+    DB_USER=${DB_USER:-"${DEFAULT_DB_USER}"}
+    
+    # Sanitize: lowercase, only alphanumeric and underscore
+    SANITIZED_USER=$(echo "$DB_USER" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')
+    
+    if [ "$DB_USER" != "$SANITIZED_USER" ]; then
+        echoc "33" "⚠ Username contained invalid characters. Converting to: $SANITIZED_USER"
+        DB_USER="$SANITIZED_USER"
+    fi
+    
+    if [ -z "$DB_USER" ]; then
+        echoc "31" "⚠ Username cannot be empty."
+        continue
+    fi
+    
+    echoc "32" "✓ Database user: $DB_USER"
+    break
+done
 
 read -s -p "Enter MySQL Password: " DB_PASSWORD
 echo ""
