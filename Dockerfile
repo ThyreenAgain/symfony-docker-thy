@@ -1,7 +1,7 @@
 #syntax=docker/dockerfile:1
 
-# Use a specific PHP 8.3 image as the base. You can change the version as needed.
-FROM dunglas/frankenphp:1-php8.3 AS frankenphp_upstream
+# Use a specific PHP 8.4 image as the base. You can change the version as needed.
+FROM dunglas/frankenphp:1-php8.4 AS frankenphp_upstream
 
 # The different stages of this Dockerfile are meant to be built into separate images
 # https://docs.docker.com/develop/develop-images/multistage-build/#stop-at-a-specific-build-stage
@@ -34,6 +34,14 @@ RUN set -eux; \
 	
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
+
+# Transport to use by Mercure (default to Bolt)
+ENV MERCURE_TRANSPORT_URL=bolt:///data/mercure.db
+
+ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
+
+###> recipes ###
+###< recipes ###
 
 # Add Node.js and npm to the container (REQUIRED FOR SPEC KIT AND WEBPACK ENCORE)
 # This uses the NodeSource repository for a reliable, up-to-date installation.
@@ -69,7 +77,8 @@ RUN VENV_DIR=/opt/venv/specify-cli && \
     echo "Creating system symlink for specify-cli..." && \
     ln -s ${VENV_DIR}/bin/specify-cli /usr/local/bin/specify-cli
 
-# Copy the custom Caddyfile (ensure you have one in frankenphp/Caddyfile)
+COPY --link frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
+COPY --link --chmod=755 frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 COPY --link frankenphp/Caddyfile /etc/frankenphp/Caddyfile
 
 ENTRYPOINT ["docker-entrypoint"]
@@ -111,15 +120,19 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY --link frankenphp/conf.d/20-app.prod.ini $PHP_INI_DIR/app.conf.d/
 
 # prevent the reinstallation of vendors at every changes in the source code
-COPY --link composer.* symfony.lock ./
+COPY --link composer.* symfony.* ./
 RUN set -eux; \
-	composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts; \
-	composer dump-autoload --classmap-authoritative --no-dev; \
-	composer run-script post-install-cmd; \
-	composer clear-cache;
+	composer install --no-cache --prefer-dist --no-dev --no-autoloader --no-scripts --no-progress
 
-# Copy source code
-COPY --link . /app
+# copy sources
+COPY --link --exclude=frankenphp/ . ./
+
+RUN set -eux; \
+	mkdir -p var/cache var/log; \
+	composer dump-autoload --classmap-authoritative --no-dev; \
+	composer dump-env prod; \
+	composer run-script --no-dev post-install-cmd; \
+	chmod +x bin/console; sync;
 
 # Uncomment this section if you use Symfony Encore to build CSS and JavaScript files
 # (and add Node.js to the base image)
@@ -127,8 +140,3 @@ RUN set -eux; \
     npm install; \
     npm run build; \
     rm -rf node_modules;
-
-# Copy the Caddyfile (ensure you have one in frankenphp/Caddyfile)
-COPY --link frankenphp/Caddyfile /etc/frankenphp/Caddyfile
-
-CMD [ "frankenphp", "run", "--config", "/etc/frankenphp/CDfile" ]

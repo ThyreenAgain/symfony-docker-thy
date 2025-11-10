@@ -5,14 +5,9 @@ services:
     image: ${IMAGES_PREFIX:-}-app-php
     container_name: ${IMAGES_PREFIX:-}-php-app # You can change this name if needed
     restart: unless-stopped
-    build:
-      context: .
-      target: frankenphp_prod # Use the prod stage for default
-    # FIX: Explicitly set the command to run the Caddy server binary, 
-    # resolving the "docker-entrypoint: executable file not found" error.
-    command: ["/usr/bin/caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
+      DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-443}
       MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
       MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
       # Use the mysql connection defined in the environment variables
@@ -20,7 +15,8 @@ services:
       # Run "composer require symfony/mercure-bundle" to install and configure the Mercure integration
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
       MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-443}/.well-known/mercure}
-       # The two next lines can be removed after initial installation
+      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      # The two next lines can be removed after initial installation
       SYMFONY_VERSION: ${SYMFONY_VERSION:-}
       STABILITY: ${STABILITY:-stable}
     depends_on:
@@ -32,19 +28,18 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     ports:
-      # HTTP
-      - target: 80
+      - name: http
+        target: 80
         published: ${HTTP_PORT:-80}
         protocol: tcp
-      # HTTPS
-      - target: 443
+      - name: https
+        target: 443
         published: ${HTTPS_PORT:-443}
         protocol: tcp
-      # HTTP/3
-      - target: 443
-        published: ${HTTPS_PORT:-443}
+      - name: http3
+        target: 443
+        published: ${HTTP3_PORT:-443}
         protocol: udp
-      - "54112:54112"
   database:
     image: mysql:${MYSQL_VERSION:-8}
     # NOTE: The setup script will replace this ports line with the user-defined host port: ${DB_HOST_PORT}:3306
