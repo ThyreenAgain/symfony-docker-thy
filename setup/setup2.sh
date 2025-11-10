@@ -161,21 +161,27 @@ if [ -f .env.dev.example ]; then
     cp .env.dev.example .env.dev.local
     echoc "36" "Creating .env.dev.local..."
     
-    # Update database credentials
-    sed -i "
-        s#^MYSQL_USER=.*#MYSQL_USER=${DB_USER}#;
-        s#^MYSQL_PASSWORD=.*#MYSQL_PASSWORD=${DB_PASSWORD}#;
-        s#^MYSQL_ROOT_PASSWORD=.*#MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}#;
-        s#^MYSQL_DATABASE=.*#MYSQL_DATABASE=${DB_DATABASE}#;
-        s#:3306/#:${DB_HOST_PORT}/#g;
-    " .env.dev.local
+    # Update database credentials using safer approach
+    # Escape special characters for sed
+    DB_USER_ESCAPED=$(echo "$DB_USER" | sed 's/[&/\]/\\&/g')
+    DB_PASSWORD_ESCAPED=$(echo "$DB_PASSWORD" | sed 's/[&/\]/\\&/g')
+    DB_ROOT_PASSWORD_ESCAPED=$(echo "$DB_ROOT_PASSWORD" | sed 's/[&/\]/\\&/g')
+    DB_DATABASE_ESCAPED=$(echo "$DB_DATABASE" | sed 's/[&/\]/\\&/g')
+    
+    sed -i \
+        -e "s|^MYSQL_USER=.*|MYSQL_USER=${DB_USER_ESCAPED}|" \
+        -e "s|^MYSQL_PASSWORD=.*|MYSQL_PASSWORD=${DB_PASSWORD_ESCAPED}|" \
+        -e "s|^MYSQL_ROOT_PASSWORD=.*|MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD_ESCAPED}|" \
+        -e "s|^MYSQL_DATABASE=.*|MYSQL_DATABASE=${DB_DATABASE_ESCAPED}|" \
+        -e "s|:3306/|:${DB_HOST_PORT}/|g" \
+        .env.dev.local
     
     # Configure Mailer DSN for shared Mailpit if not using project-specific Mailpit
     if [[ ! "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
         echoc "36" "Configuring to use shared Mailpit instance..."
         # Add or update MAILER_DSN to use host.docker.internal
         if grep -q "^MAILER_DSN=" .env.dev.local 2>/dev/null; then
-            sed -i "s#^MAILER_DSN=.*#MAILER_DSN=smtp://host.docker.internal:1025#" .env.dev.local
+            sed -i "s|^MAILER_DSN=.*|MAILER_DSN=smtp://host.docker.internal:1025|" .env.dev.local
         else
             echo "" >> .env.dev.local
             echo "# Mailer configuration (using shared Mailpit)" >> .env.dev.local
@@ -186,11 +192,11 @@ if [ -f .env.dev.example ]; then
     
     # Uncomment Mercure configuration if enabled
     if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
-        sed -i "
-            s/^# MERCURE_URL=/MERCURE_URL=/;
-            s/^# MERCURE_PUBLIC_URL=/MERCURE_PUBLIC_URL=/;
-            s/^# MERCURE_JWT_SECRET=/MERCURE_JWT_SECRET=/;
-        " .env.dev.local
+        sed -i \
+            -e "s|^# MERCURE_URL=|MERCURE_URL=|" \
+            -e "s|^# MERCURE_PUBLIC_URL=|MERCURE_PUBLIC_URL=|" \
+            -e "s|^# MERCURE_JWT_SECRET=|MERCURE_JWT_SECRET=|" \
+            .env.dev.local
     fi
     
     echoc "32" "✔ .env.dev.local created and configured."
