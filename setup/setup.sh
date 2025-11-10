@@ -19,6 +19,53 @@ echoc() {
     echo -e "\033[${COLOR}m$@\033[0m"
 }
 
+# --- Helper function to check if port is available ---
+check_port() {
+    local port=$1
+    local service_name=$2
+    
+    # Check if port is in use
+    if command -v lsof &> /dev/null; then
+        if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 ; then
+            echoc "33" "⚠ Warning: Port $port is already in use by another service!"
+            # Try to identify what's using the port
+            local process=$(lsof -Pi :$port -sTCP:LISTEN 2>/dev/null | grep LISTEN | awk '{print $1}' | head -1)
+            if [ -n "$process" ]; then
+                echoc "33" "   Used by: $process"
+            fi
+            return 1
+        fi
+    elif command -v netstat &> /dev/null; then
+        if netstat -tuln 2>/dev/null | grep -q ":$port "; then
+            echoc "33" "⚠ Warning: Port $port is already in use!"
+            return 1
+        fi
+    elif command -v ss &> /dev/null; then
+        if ss -tuln 2>/dev/null | grep -q ":$port "; then
+            echoc "33" "⚠ Warning: Port $port is already in use!"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
+# --- Helper function to suggest next available port ---
+suggest_port() {
+    local start_port=$1
+    local max_attempts=100
+    
+    for ((port=start_port; port<start_port+max_attempts; port++)); do
+        if check_port $port "temp" 2>/dev/null; then
+            echo $port
+            return 0
+        fi
+    done
+    
+    echo $((start_port + 1000))
+    return 0
+}
+
 # --- Determine the correct user for file ownership ---
 if [ -n "$SUDO_USER" ]; then
     CURRENT_USER=$SUDO_USER
@@ -130,32 +177,77 @@ fi
 echoc "36" "Change these ONLY if you run multiple projects simultaneously."
 echo ""
 
-# --- Get Unique Ports ---
-read -p "Enter Host Port for MySQL (Default: 3306): " DB_HOST_PORT
-DB_HOST_PORT=${DB_HOST_PORT:-3306}
-
-if ! [[ "$DB_HOST_PORT" =~ ^[0-9]+$ ]] || [ "$DB_HOST_PORT" -lt 1024 ] || [ "$DB_HOST_PORT" -gt 65535 ]; then
-    echoc "31" "Invalid port number. Must be between 1024 and 65535."
-    exit 1
-fi
+# --- Get Unique Ports with availability checking ---
+while true; do
+    read -p "Enter Host Port for MySQL (Default: 3306): " DB_HOST_PORT
+    DB_HOST_PORT=${DB_HOST_PORT:-3306}
+    
+    if ! [[ "$DB_HOST_PORT" =~ ^[0-9]+$ ]] || [ "$DB_HOST_PORT" -lt 1024 ] || [ "$DB_HOST_PORT" -gt 65535 ]; then
+        echoc "31" "Invalid port number. Must be between 1024 and 65535."
+        continue
+    fi
+    
+    if check_port $DB_HOST_PORT "MySQL"; then
+        echoc "32" "✓ Port $DB_HOST_PORT is available"
+        break
+    else
+        SUGGESTED_PORT=$(suggest_port $DB_HOST_PORT)
+        echoc "36" "   Suggestion: Try port $SUGGESTED_PORT"
+        read -p "   Try again with a different port? (y/n): " retry
+        if [[ ! "$retry" =~ ^[Yy]$ ]]; then
+            echoc "31" "Cannot proceed with port $DB_HOST_PORT already in use."
+            exit 1
+        fi
+    fi
+done
 
 # Only ask for Mailpit ports if enabled
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
-    read -p "Enter Host Port for Mailpit SMTP (Default: 1025): " MAILPIT_SMTP_PORT
-    MAILPIT_SMTP_PORT=${MAILPIT_SMTP_PORT:-1025}
+    while true; do
+        read -p "Enter Host Port for Mailpit SMTP (Default: 1025): " MAILPIT_SMTP_PORT
+        MAILPIT_SMTP_PORT=${MAILPIT_SMTP_PORT:-1025}
+        
+        if ! [[ "$MAILPIT_SMTP_PORT" =~ ^[0-9]+$ ]] || [ "$MAILPIT_SMTP_PORT" -lt 1024 ] || [ "$MAILPIT_SMTP_PORT" -gt 65535 ]; then
+            echoc "31" "Invalid port number."
+            continue
+        fi
+        
+        if check_port $MAILPIT_SMTP_PORT "Mailpit SMTP"; then
+            echoc "32" "✓ Port $MAILPIT_SMTP_PORT is available"
+            break
+        else
+            SUGGESTED_PORT=$(suggest_port $MAILPIT_SMTP_PORT)
+            echoc "36" "   Suggestion: Try port $SUGGESTED_PORT"
+            read -p "   Try again with a different port? (y/n): " retry
+            if [[ ! "$retry" =~ ^[Yy]$ ]]; then
+                echoc "31" "Cannot proceed with port $MAILPIT_SMTP_PORT already in use."
+                exit 1
+            fi
+        fi
+    done
     
-    if ! [[ "$MAILPIT_SMTP_PORT" =~ ^[0-9]+$ ]] || [ "$MAILPIT_SMTP_PORT" -lt 1024 ] || [ "$MAILPIT_SMTP_PORT" -gt 65535 ]; then
-        echoc "31" "Invalid port number."
-        exit 1
-    fi
-    
-    read -p "Enter Host Port for Mailpit Web UI (Default: 8025): " MAILPIT_WEB_PORT
-    MAILPIT_WEB_PORT=${MAILPIT_WEB_PORT:-8025}
-    
-    if ! [[ "$MAILPIT_WEB_PORT" =~ ^[0-9]+$ ]] || [ "$MAILPIT_WEB_PORT" -lt 1024 ] || [ "$MAILPIT_WEB_PORT" -gt 65535 ]; then
-        echoc "31" "Invalid port number."
-        exit 1
-    fi
+    while true; do
+        read -p "Enter Host Port for Mailpit Web UI (Default: 8025): " MAILPIT_WEB_PORT
+        MAILPIT_WEB_PORT=${MAILPIT_WEB_PORT:-8025}
+        
+        if ! [[ "$MAILPIT_WEB_PORT" =~ ^[0-9]+$ ]] || [ "$MAILPIT_WEB_PORT" -lt 1024 ] || [ "$MAILPIT_WEB_PORT" -gt 65535 ]; then
+            echoc "31" "Invalid port number."
+            continue
+        fi
+        
+        if check_port $MAILPIT_WEB_PORT "Mailpit Web UI"; then
+            echoc "32" "✓ Port $MAILPIT_WEB_PORT is available"
+            break
+        else
+            SUGGESTED_PORT=$(suggest_port $MAILPIT_WEB_PORT)
+            echoc "36" "   Suggestion: Try port $SUGGESTED_PORT"
+            read -p "   Try again with a different port? (y/n): " retry
+            if [[ ! "$retry" =~ ^[Yy]$ ]]; then
+                echoc "31" "Cannot proceed with port $MAILPIT_WEB_PORT already in use."
+                exit 1
+            fi
+        fi
+    done
 else
     MAILPIT_SMTP_PORT=1025
     MAILPIT_WEB_PORT=8025

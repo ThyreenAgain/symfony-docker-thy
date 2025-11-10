@@ -104,6 +104,21 @@ make logs    # View logs
 make sh      # Access PHP container
 make sf c=about  # Run Symfony commands
 ```
+## Architecture Overview
+Repository Root
+├── install.sh              ← NEW! Standalone bootstrap
+│   └── Downloads template to /tmp
+│       └── Runs setup.sh
+│           └── Creates new project
+│
+└── setup/
+    ├── setup.sh            ← Main setup wizard
+    │   └── Clones template to project directory
+    │       └── Calls setup2.sh
+    │
+    └── setup2.sh           ← Configuration & build
+        └── Configures project
+            └── Starts containers
 
 ## Project Structure
 
