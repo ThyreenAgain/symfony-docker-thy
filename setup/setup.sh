@@ -19,32 +19,90 @@ echoc() {
     echo -e "\033[${COLOR}m$@\033[0m"
 }
 
+# --- Helper function to detect if running in WSL ---
+is_wsl() {
+    if [ -f /proc/version ] && grep -qi microsoft /proc/version; then
+        return 0
+    fi
+    return 1
+}
+
 # --- Helper function to check if port is available ---
 check_port() {
     local port=$1
     local service_name=$2
+    local in_wsl=false
     
-    # Check if port is in use
+    # Detect WSL environment
+    if is_wsl; then
+        in_wsl=true
+        echoc "36" "🐧 WSL Environment Detected - Checking both WSL and Windows ports..."
+    fi
+    
+    # Check if port is in use in WSL/Linux
+    local wsl_port_used=false
+    local detection_method="none"
+    
     if command -v lsof &> /dev/null; then
+        detection_method="lsof"
+        echoc "36" "   📊 Using 'lsof' for WSL port detection..."
         if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-            echoc "33" "⚠ Warning: Port $port is already in use by another service!"
+            wsl_port_used=true
             # Try to identify what's using the port
             local process=$(lsof -Pi :$port -sTCP:LISTEN 2>/dev/null | grep LISTEN | awk '{print $1}' | head -1)
-            if [ -n "$process" ]; then
-                echoc "33" "   Used by: $process"
-            fi
-            return 1
+            echoc "33" "   ⚠ Port $port in use in WSL by: $process"
+        else
+            echoc "32" "   ✓ Port $port is available in WSL (lsof check)"
         fi
     elif command -v netstat &> /dev/null; then
+        detection_method="netstat"
+        echoc "36" "   📊 Using 'netstat' for WSL port detection..."
         if netstat -tuln 2>/dev/null | grep -q ":$port "; then
-            echoc "33" "⚠ Warning: Port $port is already in use!"
-            return 1
+            wsl_port_used=true
+            echoc "33" "   ⚠ Port $port in use in WSL (netstat)"
+        else
+            echoc "32" "   ✓ Port $port is available in WSL (netstat check)"
         fi
     elif command -v ss &> /dev/null; then
+        detection_method="ss"
+        echoc "36" "   📊 Using 'ss' for WSL port detection..."
         if ss -tuln 2>/dev/null | grep -q ":$port "; then
-            echoc "33" "⚠ Warning: Port $port is already in use!"
-            return 1
+            wsl_port_used=true
+            echoc "33" "   ⚠ Port $port in use in WSL (ss)"
+        else
+            echoc "32" "   ✓ Port $port is available in WSL (ss check)"
         fi
+    else
+        echoc "33" "   ⚠ No port detection tool found (lsof, netstat, ss)"
+    fi
+    
+    # If in WSL, also check Windows host ports
+    if [ "$in_wsl" = true ]; then
+        echoc "36" "   🪟 Checking Windows host ports via PowerShell..."
+        
+        # Try to query Windows ports using PowerShell
+        if command -v powershell.exe &> /dev/null; then
+            # Check if port is in use on Windows host
+            local ps_result=$(powershell.exe -Command "Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -First 1" 2>/dev/null)
+            
+            if [ -n "$ps_result" ] && [ "$ps_result" != "" ]; then
+                echoc "33" "   ⚠ Port $port is in use on Windows host!"
+                echoc "33" "   💡 This port is bound by a Windows application (e.g., Docker Desktop)"
+                echoc "33" "   💡 WSL cannot detect Windows host ports - this is the root cause!"
+                return 1
+            else
+                echoc "32" "   ✓ Port $port is available on Windows host"
+            fi
+        else
+            echoc "33" "   ⚠ PowerShell not available - cannot check Windows ports"
+            echoc "36" "   💡 Install PowerShell in WSL or run script from Windows"
+        fi
+    fi
+    
+    # Return result based on detection
+    if [ "$wsl_port_used" = true ]; then
+        echoc "33" "⚠ Warning: Port $port is already in use by another service!"
+        return 1
     fi
     
     return 0

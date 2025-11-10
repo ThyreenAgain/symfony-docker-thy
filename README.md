@@ -9,12 +9,44 @@ with [FrankenPHP](https://frankenphp.dev) and [Caddy](https://caddyserver.com/) 
 - **COMPOSE_PROJECT_NAME** - Proper Docker resource namespacing
 - **Multiple Projects** - Run several projects simultaneously without conflicts
 
+## Requirements
+
+- **Docker** 20.10+
+- **Docker Compose** 2.10+
+- **Git** (for installation)
+- **Bash** shell (Linux/macOS native, or WSL2 on Windows)
+
+### ⚠️ Important for Windows Users
+
+**The setup scripts MUST be run from a Bash shell.** Windows Command Prompt and PowerShell are **NOT compatible**.
+
+**Recommended Setup for Windows:**
+1. Install [WSL2 (Windows Subsystem for Linux)](https://learn.microsoft.com/en-us/windows/wsl/install)
+2. Install Docker Desktop with WSL2 integration enabled
+3. Run the setup scripts from within your WSL2 Ubuntu terminal
+
+**Known Issue - WSL Port Detection:**
+When running from WSL with Docker Desktop on Windows, the setup script may not detect that ports (like 3306) are already in use by Windows applications. This is because WSL network tools cannot see Windows host ports.
+
+**Workaround:**
+- The enhanced port detection will now check both WSL and Windows ports
+- If you see warnings about ports, choose different ports during setup
+- Or stop the Windows service using the port before running setup
+
 ## Quick Start (Recommended)
 
 ### One-Command Installation
 
+**On Linux/macOS:**
 ```bash
 # Download and run the installer
+curl -fsSL https://raw.githubusercontent.com/ThyreenAgain/symfony-docker-thy/main/install.sh | bash
+```
+
+**On Windows (WSL2):**
+```bash
+# First, open WSL2 terminal (Ubuntu)
+# Then run:
 curl -fsSL https://raw.githubusercontent.com/ThyreenAgain/symfony-docker-thy/main/install.sh | bash
 ```
 
@@ -38,22 +70,25 @@ The installer will:
 
 If you want to clone and customize the template:
 
+**Linux/macOS or WSL2:**
 ```bash
 # 1. Clone this repository
 git clone https://github.com/ThyreenAgain/symfony-docker-thy.git
 cd symfony-docker-thy
 
-# 2. Run the setup script
+# 2. Run the setup script (MUST use bash)
 cd setup
 chmod +x setup.sh
 ./setup.sh
 
 # 3. Follow the prompts
 #    - Project name
-#    - Database credentials  
+#    - Database credentials
 #    - Optional features (Mailer, Mercure)
 #    - Port configuration
 ```
+
+**⚠️ Windows Note:** Do NOT run setup scripts from Windows Command Prompt or PowerShell. Use WSL2 terminal.
 
 ## Features
 
@@ -210,13 +245,6 @@ make up
 - 📓 [TLS Certificates](docs/tls.md) - HTTPS configuration
 - 📒 [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
-## Requirements
-
-- **Docker** 20.10+
-- **Docker Compose** 2.10+
-- **Git** (for installation)
-- **Linux/macOS** or **Windows with WSL2** (recommended)
-
 ## Advantages Over Official symfony-docker
 
 ✅ **Automated setup** - One command to working project  
@@ -230,14 +258,52 @@ make up
 
 ## Troubleshooting
 
+### Windows: Setup Script Not Working
+
+**Problem:** Getting errors when running setup from Windows Command Prompt or PowerShell.
+
+**Solution:**
+```bash
+# ❌ DON'T use Command Prompt or PowerShell
+C:\> .\setup\setup.sh  # This will FAIL
+
+# ✅ DO use WSL2
+$ ./setup/setup.sh     # This works
+```
+
+The scripts require Bash and Linux utilities. Use WSL2 on Windows.
+
+### WSL: Port Detection Not Working
+
+**Problem:** Setup doesn't detect that port 3306 (or others) is already in use by Docker Desktop on Windows.
+
+**Root Cause:** WSL network tools (lsof, netstat, ss) cannot see Windows host ports.
+
+**Solution:** The updated script now checks Windows ports via PowerShell. You'll see detailed diagnostic output like:
+```
+🐧 WSL Environment Detected - Checking both WSL and Windows ports...
+   📊 Using 'lsof' for WSL port detection...
+   ✓ Port 3306 is available in WSL (lsof check)
+   🪟 Checking Windows host ports via PowerShell...
+   ⚠ Port 3306 is in use on Windows host!
+```
+
+**Workaround if detection still fails:**
+1. Stop Docker Desktop before running setup
+2. Or choose different ports during setup (e.g., 3307 for MySQL)
+3. Or run the setup script from Windows PowerShell (not recommended - use WSL2)
+
 ### Port Already in Use
 
 ```bash
-# Check what's using the port
+# Check what's using the port in Docker
 docker ps
 
+# On Windows, check Windows services
+Get-NetTCPConnection -LocalPort 3306
+
 # Choose different ports during setup
-# Or stop the conflicting container
+# Or stop the conflicting service
 docker stop <container-id>
 ```
 
