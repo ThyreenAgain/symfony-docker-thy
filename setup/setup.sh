@@ -274,8 +274,8 @@ while true; do
         continue
     fi
     
-    # Convert to lowercase and sanitize (keep only alphanumeric, underscore, hyphen)
-    SANITIZED_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+    # Convert to lowercase, convert hyphens to underscores, sanitize
+    SANITIZED_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/[^a-z0-9_]//g')
     
     if [ "$APP_NAME" != "$SANITIZED_NAME" ]; then
         echoc "33" "⚠ Project name contained invalid characters. Converting to: $SANITIZED_NAME"
@@ -407,8 +407,8 @@ while true; do
     read -p "Enter MySQL Database Name (Default: '${APP_NAME}_db'): " DB_DATABASE
     DB_DATABASE=${DB_DATABASE:-"${APP_NAME}_db"}
     
-    # Sanitize: lowercase, only alphanumeric and underscore
-    SANITIZED_DB=$(echo "$DB_DATABASE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')
+    # Sanitize: lowercase, convert hyphens to underscores, only alphanumeric and underscore
+    SANITIZED_DB=$(echo "$DB_DATABASE" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/[^a-z0-9_]//g')
     
     if [ "$DB_DATABASE" != "$SANITIZED_DB" ]; then
         echoc "33" "⚠ Database name contained invalid characters. Converting to: $SANITIZED_DB"
@@ -430,8 +430,8 @@ while true; do
     read -p "Enter MySQL User (Default: '${DEFAULT_DB_USER}'): " DB_USER
     DB_USER=${DB_USER:-"${DEFAULT_DB_USER}"}
     
-    # Sanitize: lowercase, only alphanumeric and underscore
-    SANITIZED_USER=$(echo "$DB_USER" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')
+    # Sanitize: lowercase, convert hyphens to underscores, only alphanumeric and underscore
+    SANITIZED_USER=$(echo "$DB_USER" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/[^a-z0-9_]//g')
     
     if [ "$DB_USER" != "$SANITIZED_USER" ]; then
         echoc "33" "⚠ Username contained invalid characters. Converting to: $SANITIZED_USER"
