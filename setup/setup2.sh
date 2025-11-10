@@ -170,6 +170,20 @@ if [ -f .env.dev.example ]; then
         s#:3306/#:${DB_HOST_PORT}/#g;
     " .env.dev.local
     
+    # Configure Mailer DSN for shared Mailpit if not using project-specific Mailpit
+    if [[ ! "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
+        echoc "36" "Configuring to use shared Mailpit instance..."
+        # Add or update MAILER_DSN to use host.docker.internal
+        if grep -q "^MAILER_DSN=" .env.dev.local 2>/dev/null; then
+            sed -i "s#^MAILER_DSN=.*#MAILER_DSN=smtp://host.docker.internal:1025#" .env.dev.local
+        else
+            echo "" >> .env.dev.local
+            echo "# Mailer configuration (using shared Mailpit)" >> .env.dev.local
+            echo "MAILER_DSN=smtp://host.docker.internal:1025" >> .env.dev.local
+        fi
+        echoc "32" "✔ Configured to use shared Mailpit at host.docker.internal:1025"
+    fi
+    
     # Uncomment Mercure configuration if enabled
     if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
         sed -i "

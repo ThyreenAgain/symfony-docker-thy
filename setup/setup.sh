@@ -204,6 +204,7 @@ echo ""
 
 # Check for existing Mailpit instances
 EXISTING_MAILPIT=""
+SHARED_MAILPIT_CREATED=false
 if command -v docker &> /dev/null; then
     EXISTING_MAILPIT=$(docker ps --filter "ancestor=axllent/mailpit" --format "{{.Names}}: {{.Ports}}" 2>/dev/null | head -1)
 fi
@@ -212,19 +213,54 @@ fi
 echoc "36" "📧 Mailer (Mailpit):"
 echoc "36" "   Email testing service with web UI to catch and inspect emails."
 echoc "36" "   Useful for testing email functionality in development."
+echo ""
 
 if [ -n "$EXISTING_MAILPIT" ]; then
-    echoc "33" ""
     echoc "33" "   ⚠ EXISTING MAILPIT DETECTED: $EXISTING_MAILPIT"
-    echoc "32" "   💡 TIP: Mailpit is stateless - you can share ONE instance across ALL projects!"
-    echoc "36" "   If you skip Mailpit here, configure this project to use the existing one:"
-    echoc "36" "   Add to .env.dev.local: MAILER_DSN=smtp://host.docker.internal:<port>"
-    echoc "36" "   (Replace <port> with the SMTP port from above, usually 1025 or 63309)"
     echo ""
+    echoc "32" "   💡 TIP: Mailpit is stateless - you can share ONE instance across ALL projects!"
+    echoc "36" "   Recommended: Skip Mailpit here and use the existing shared instance."
+    echo ""
+    read -p "   Enable Mailpit for THIS project? (y/n, default: n): " ENABLE_MAILER
+    ENABLE_MAILER=${ENABLE_MAILER:-n}
+else
+    echoc "32" "   ℹ No existing Mailpit instance detected."
+    echoc "36" "   You have two options:"
+    echoc "36" "   1. Create a SHARED Mailpit (recommended) - one instance for all projects"
+    echoc "36" "   2. Include Mailpit in THIS project's compose stack"
+    echo ""
+    read -p "   Create a shared standalone Mailpit container? (y/n, default: y): " CREATE_SHARED_MAILPIT
+    CREATE_SHARED_MAILPIT=${CREATE_SHARED_MAILPIT:-y}
+    
+    if [[ "$CREATE_SHARED_MAILPIT" =~ ^[Yy]$ ]]; then
+        echoc "36" ""
+        echoc "36" "Creating shared Mailpit container..."
+        
+        # Create a standalone Mailpit container that persists across reboots
+        if docker run -d \
+            --name shared-mailpit \
+            -p 1025:1025 \
+            -p 8025:8025 \
+            --restart unless-stopped \
+            axllent/mailpit 2>/dev/null; then
+            
+            echoc "32" "   ✓ Shared Mailpit created successfully!"
+            echoc "32" "   SMTP: localhost:1025"
+            echoc "32" "   Web UI: http://localhost:8025"
+            echoc "32" "   This container will be used by all your projects."
+            SHARED_MAILPIT_CREATED=true
+            ENABLE_MAILER=n
+        else
+            echoc "31" "   ✗ Failed to create shared Mailpit (port 1025 or 8025 might be in use)"
+            echoc "36" "   Falling back to project-specific Mailpit..."
+            ENABLE_MAILER=y
+        fi
+    else
+        echoc "36" "   Including Mailpit in this project's compose stack..."
+        ENABLE_MAILER=y
+    fi
 fi
 
-read -p "   Enable Mailer/Mailpit for THIS project? (y/n, default: y): " ENABLE_MAILER
-ENABLE_MAILER=${ENABLE_MAILER:-y}
 echo ""
 
 # Ask about Mercure
