@@ -185,17 +185,24 @@ prompt_for_port() {
             continue
         fi
         
+        # Show checking indicator
+        echo -n "Checking port $input_port..."
+        
         # Check if port is available
         if check_port $input_port "$service_name"; then
+            echo -e "\r\033[K" # Clear the line
             echoc "32" "✓ Port $input_port is available"
             selected_port=$input_port
             break
         else
-            # Port in use - suggest alternative
-            echoc "33" "⚠ Port $input_port is already in use"
+            echo -e "\r\033[K" # Clear the line
+            # Port in use - find and suggest alternative
+            echo -n "Finding available port..."
             local suggested=$(find_available_port $((input_port + 1)))
-            echoc "36" "💡 Suggested alternative: $suggested"
-            read -p "Use port $suggested? (y/n): " use_suggested
+            echo -e "\r\033[K" # Clear the line
+            
+            echoc "33" "⚠ Port $input_port is already in use"
+            read -p "   Do you want to use port $suggested instead? (y/n): " use_suggested
             
             if [[ "$use_suggested" =~ ^[Yy]$ ]]; then
                 selected_port=$suggested
