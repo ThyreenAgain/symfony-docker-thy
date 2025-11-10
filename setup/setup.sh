@@ -182,25 +182,41 @@ prompt_for_port() {
         # Validate port number
         if ! [[ "$input_port" =~ ^[0-9]+$ ]] || [ "$input_port" -lt 1024 ] || [ "$input_port" -gt 65535 ]; then
             echoc "31" "⚠ Invalid port. Must be between 1024 and 65535."
+            echo ""
             continue
         fi
         
+        # Show checking indicator
+        echo -n "Checking if port $input_port is available..."
+        
         # Check if port is available
         if check_port $input_port "$service_name"; then
-            echoc "32" "✓ Port $input_port is available"
+            echo -e "\r\033[K" # Clear the line
+            echoc "32" "✓ Port $input_port is available and will be used"
             selected_port=$input_port
+            echo ""
             break
         else
-            # Port in use - suggest alternative
-            echoc "33" "⚠ Port $input_port is already in use"
+            echo -e "\r\033[K" # Clear the line
+            echoc "31" "✗ Port not available"
+            
+            # Port in use - find and suggest alternative
+            echo -n "Finding next available port..."
             local suggested=$(find_available_port $((input_port + 1)))
-            echoc "36" "💡 Suggested alternative: $suggested"
-            read -p "Use port $suggested? (y/n): " use_suggested
+            echo -e "\r\033[K" # Clear the line
+            
+            echoc "33" "⚠ Port $input_port is already in use."
+            read -p "   Do you want to use port $suggested instead? (y/n): " use_suggested
+            echo ""
             
             if [[ "$use_suggested" =~ ^[Yy]$ ]]; then
                 selected_port=$suggested
                 echoc "32" "✓ Using port $suggested"
+                echo ""
                 break
+            else
+                echoc "36" "Please enter a different port number."
+                echo ""
             fi
             # Loop continues to ask for another port
         fi
