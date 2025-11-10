@@ -186,19 +186,22 @@ prompt_for_port() {
             continue
         fi
         
-        # Show checking indicator and flush output
-        printf "Checking if port %s is available...\n" "$input_port"
+        # Show checking indicator and flush output to stderr for immediate display
+        echo "Checking if port $input_port is available..." >&2
         
         # Check if port is available
         if check_port $input_port "$service_name"; then
+            echo "" >&2
             echoc "32" "✓ Port $input_port is available and will be used"
             selected_port=$input_port
             echo ""
             break
         else
-            echoc "31" "✗ Port not available"
-            echo "Finding next available port..."
+            echo "" >&2
+            echoc "31" "✗ Port $input_port is already in use" >&2
+            echo "Finding next available port..." >&2
             local suggested=$(find_available_port $((input_port + 1)))
+            echo "" >&2
             
             echoc "33" "⚠ Port $input_port is already in use."
             read -p "   Do you want to use port $suggested instead? (y/n): " use_suggested
