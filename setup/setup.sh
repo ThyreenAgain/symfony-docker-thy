@@ -9,8 +9,16 @@
 # 4. Clones the symfony-docker template repository.
 # 5. Calls setup2.sh to configure and install the environment.
 # 6. Uses COMPOSE_PROJECT_NAME for automatic Docker resource namespacing.
+#
+# Usage: ./setup.sh [--verbose]
 
 set -e # Exit immediately if a command exits with a non-zero status
+
+# Check for verbose flag
+VERBOSE=false
+if [[ "$1" == "--verbose" ]]; then
+    VERBOSE=true
+fi
 
 # --- Helper function for colored output ---
 echoc() {
@@ -27,7 +35,7 @@ is_wsl() {
     return 1
 }
 
-# --- Helper function to check if port is available ---
+# --- Helper function to check if port is available (silent mode) ---
 check_port() {
     local port=$1
     local service_name=$2
@@ -36,7 +44,9 @@ check_port() {
     # Detect WSL environment
     if is_wsl; then
         in_wsl=true
-        echoc "36" "🐧 WSL Environment Detected - Checking both WSL and Windows ports..."
+        if [ "$VERBOSE" = true ]; then
+            echoc "36" "🐧 WSL Environment Detected - Checking both WSL and Windows ports..."
+        fi
     fi
     
     # Check if port is in use in WSL/Linux
@@ -45,92 +55,111 @@ check_port() {
     
     if command -v lsof &> /dev/null; then
         detection_method="lsof"
-        echoc "36" "   📊 Using 'lsof' for WSL port detection..."
+        if [ "$VERBOSE" = true ]; then
+            echoc "36" "   📊 Using 'lsof' for WSL port detection..."
+        fi
         if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 ; then
             wsl_port_used=true
-            # Try to identify what's using the port
-            local process=$(lsof -Pi :$port -sTCP:LISTEN 2>/dev/null | grep LISTEN | awk '{print $1}' | head -1)
-            echoc "33" "   ⚠ Port $port in use in WSL by: $process"
+            if [ "$VERBOSE" = true ]; then
+                local process=$(lsof -Pi :$port -sTCP:LISTEN 2>/dev/null | grep LISTEN | awk '{print $1}' | head -1)
+                echoc "33" "   ⚠ Port $port in use in WSL by: $process"
+            fi
         else
-            echoc "32" "   ✓ Port $port is available in WSL (lsof check)"
+            if [ "$VERBOSE" = true ]; then
+                echoc "32" "   ✓ Port $port is available in WSL (lsof check)"
+            fi
         fi
     elif command -v netstat &> /dev/null; then
         detection_method="netstat"
-        echoc "36" "   📊 Using 'netstat' for WSL port detection..."
+        if [ "$VERBOSE" = true ]; then
+            echoc "36" "   📊 Using 'netstat' for WSL port detection..."
+        fi
         if netstat -tuln 2>/dev/null | grep -q ":$port "; then
             wsl_port_used=true
-            echoc "33" "   ⚠ Port $port in use in WSL (netstat)"
+            if [ "$VERBOSE" = true ]; then
+                echoc "33" "   ⚠ Port $port in use in WSL (netstat)"
+            fi
         else
-            echoc "32" "   ✓ Port $port is available in WSL (netstat check)"
+            if [ "$VERBOSE" = true ]; then
+                echoc "32" "   ✓ Port $port is available in WSL (netstat check)"
+            fi
         fi
     elif command -v ss &> /dev/null; then
         detection_method="ss"
-        echoc "36" "   📊 Using 'ss' for WSL port detection..."
+        if [ "$VERBOSE" = true ]; then
+            echoc "36" "   📊 Using 'ss' for WSL port detection..."
+        fi
         if ss -tuln 2>/dev/null | grep -q ":$port "; then
             wsl_port_used=true
-            echoc "33" "   ⚠ Port $port in use in WSL (ss)"
+            if [ "$VERBOSE" = true ]; then
+                echoc "33" "   ⚠ Port $port in use in WSL (ss)"
+            fi
         else
-            echoc "32" "   ✓ Port $port is available in WSL (ss check)"
+            if [ "$VERBOSE" = true ]; then
+                echoc "32" "   ✓ Port $port is available in WSL (ss check)"
+            fi
         fi
-    else
-        echoc "33" "   ⚠ No port detection tool found (lsof, netstat, ss)"
     fi
     
     # If in WSL, also check Windows host ports
     if [ "$in_wsl" = true ]; then
-        echoc "36" "   🪟 Checking Windows host ports via PowerShell..."
+        if [ "$VERBOSE" = true ]; then
+            echoc "36" "   🪟 Checking Windows host ports via PowerShell..."
+        fi
         
         # Try to query Windows ports using PowerShell
         if command -v powershell.exe &> /dev/null; then
-            # Check if port is in use on Windows host
             local ps_result=$(powershell.exe -Command "Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -First 1" 2>/dev/null)
             
             if [ -n "$ps_result" ] && [ "$ps_result" != "" ]; then
-                echoc "33" "   ⚠ Port $port is in use on Windows host!"
-                echoc "33" "   💡 This port is bound by a Windows application (e.g., Docker Desktop)"
-                echoc "33" "   💡 WSL cannot detect Windows host ports - this is the root cause!"
+                if [ "$VERBOSE" = true ]; then
+                    echoc "33" "   ⚠ Port $port is in use on Windows host!"
+                    echoc "33" "   💡 This port is bound by a Windows application (e.g., Docker Desktop)"
+                fi
                 return 1
             else
-                echoc "32" "   ✓ Port $port is available on Windows host"
+                if [ "$VERBOSE" = true ]; then
+                    echoc "32" "   ✓ Port $port is available on Windows host"
+                fi
             fi
-        else
-            echoc "33" "   ⚠ PowerShell not available - cannot check Windows ports"
-            echoc "36" "   💡 Install PowerShell in WSL or run script from Windows"
         fi
         
         # Also check Docker containers for port mappings
-        echoc "36" "   🐳 Checking Docker Desktop for containers using port $port..."
+        if [ "$VERBOSE" = true ]; then
+            echoc "36" "   🐳 Checking Docker Desktop for containers using port $port..."
+        fi
         if command -v docker &> /dev/null; then
-            # Check if any Docker container has this port mapped (either as host or container port)
             local docker_port_check=$(docker ps --format "{{.Names}}: {{.Ports}}" 2>/dev/null | grep -E ":${port}->|:${port}/" | head -1)
             
             if [ -n "$docker_port_check" ]; then
-                echoc "33" "   ⚠ Port $port is being used by a Docker container!"
-                echoc "33" "   Container: $docker_port_check"
-                echoc "33" "   💡 Docker Desktop port mappings detected - choose a different port"
+                if [ "$VERBOSE" = true ]; then
+                    echoc "33" "   ⚠ Port $port is being used by a Docker container!"
+                    echoc "33" "   Container: $docker_port_check"
+                fi
                 return 1
             else
-                echoc "32" "   ✓ No Docker containers using port $port"
+                if [ "$VERBOSE" = true ]; then
+                    echoc "32" "   ✓ No Docker containers using port $port"
+                fi
             fi
         fi
     fi
     
     # Return result based on detection
     if [ "$wsl_port_used" = true ]; then
-        echoc "33" "⚠ Warning: Port $port is already in use by another service!"
         return 1
     fi
     
     return 0
 }
 
-# --- Helper function to suggest next available port ---
-suggest_port() {
+# --- Helper function to find next available port ---
+find_available_port() {
     local start_port=$1
     local max_attempts=100
     
     for ((port=start_port; port<start_port+max_attempts; port++)); do
-        if check_port $port "temp" 2>/dev/null; then
+        if check_port $port "temp"; then
             echo $port
             return 0
         fi
@@ -138,6 +167,46 @@ suggest_port() {
     
     echo $((start_port + 1000))
     return 0
+}
+
+# --- Helper function to prompt for port with auto-suggestion ---
+prompt_for_port() {
+    local service_name=$1
+    local default_port=$2
+    local selected_port=""
+    
+    while true; do
+        read -p "Enter Host Port for $service_name (Default: $default_port): " input_port
+        input_port=${input_port:-$default_port}
+        
+        # Validate port number
+        if ! [[ "$input_port" =~ ^[0-9]+$ ]] || [ "$input_port" -lt 1024 ] || [ "$input_port" -gt 65535 ]; then
+            echoc "31" "⚠ Invalid port. Must be between 1024 and 65535."
+            continue
+        fi
+        
+        # Check if port is available
+        if check_port $input_port "$service_name"; then
+            echoc "32" "✓ Port $input_port is available"
+            selected_port=$input_port
+            break
+        else
+            # Port in use - suggest alternative
+            echoc "33" "⚠ Port $input_port is already in use"
+            local suggested=$(find_available_port $((input_port + 1)))
+            echoc "36" "💡 Suggested alternative: $suggested"
+            read -p "Use port $suggested? (y/n): " use_suggested
+            
+            if [[ "$use_suggested" =~ ^[Yy]$ ]]; then
+                selected_port=$suggested
+                echoc "32" "✓ Using port $suggested"
+                break
+            fi
+            # Loop continues to ask for another port
+        fi
+    done
+    
+    echo $selected_port
 }
 
 # --- Determine the correct user for file ownership ---
@@ -328,76 +397,12 @@ echoc "36" "Change these ONLY if you run multiple projects simultaneously."
 echo ""
 
 # --- Get Unique Ports with availability checking ---
-while true; do
-    read -p "Enter Host Port for MySQL (Default: 3306): " DB_HOST_PORT
-    DB_HOST_PORT=${DB_HOST_PORT:-3306}
-    
-    if ! [[ "$DB_HOST_PORT" =~ ^[0-9]+$ ]] || [ "$DB_HOST_PORT" -lt 1024 ] || [ "$DB_HOST_PORT" -gt 65535 ]; then
-        echoc "31" "Invalid port number. Must be between 1024 and 65535."
-        continue
-    fi
-    
-    if check_port $DB_HOST_PORT "MySQL"; then
-        echoc "32" "✓ Port $DB_HOST_PORT is available"
-        break
-    else
-        SUGGESTED_PORT=$(suggest_port $DB_HOST_PORT)
-        echoc "36" "   Suggestion: Try port $SUGGESTED_PORT"
-        read -p "   Try again with a different port? (y/n): " retry
-        if [[ ! "$retry" =~ ^[Yy]$ ]]; then
-            echoc "31" "Cannot proceed with port $DB_HOST_PORT already in use."
-            exit 1
-        fi
-    fi
-done
+DB_HOST_PORT=$(prompt_for_port "MySQL" 3306)
 
 # Only ask for Mailpit ports if enabled
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
-    while true; do
-        read -p "Enter Host Port for Mailpit SMTP (Default: 1025): " MAILPIT_SMTP_PORT
-        MAILPIT_SMTP_PORT=${MAILPIT_SMTP_PORT:-1025}
-        
-        if ! [[ "$MAILPIT_SMTP_PORT" =~ ^[0-9]+$ ]] || [ "$MAILPIT_SMTP_PORT" -lt 1024 ] || [ "$MAILPIT_SMTP_PORT" -gt 65535 ]; then
-            echoc "31" "Invalid port number."
-            continue
-        fi
-        
-        if check_port $MAILPIT_SMTP_PORT "Mailpit SMTP"; then
-            echoc "32" "✓ Port $MAILPIT_SMTP_PORT is available"
-            break
-        else
-            SUGGESTED_PORT=$(suggest_port $MAILPIT_SMTP_PORT)
-            echoc "36" "   Suggestion: Try port $SUGGESTED_PORT"
-            read -p "   Try again with a different port? (y/n): " retry
-            if [[ ! "$retry" =~ ^[Yy]$ ]]; then
-                echoc "31" "Cannot proceed with port $MAILPIT_SMTP_PORT already in use."
-                exit 1
-            fi
-        fi
-    done
-    
-    while true; do
-        read -p "Enter Host Port for Mailpit Web UI (Default: 8025): " MAILPIT_WEB_PORT
-        MAILPIT_WEB_PORT=${MAILPIT_WEB_PORT:-8025}
-        
-        if ! [[ "$MAILPIT_WEB_PORT" =~ ^[0-9]+$ ]] || [ "$MAILPIT_WEB_PORT" -lt 1024 ] || [ "$MAILPIT_WEB_PORT" -gt 65535 ]; then
-            echoc "31" "Invalid port number."
-            continue
-        fi
-        
-        if check_port $MAILPIT_WEB_PORT "Mailpit Web UI"; then
-            echoc "32" "✓ Port $MAILPIT_WEB_PORT is available"
-            break
-        else
-            SUGGESTED_PORT=$(suggest_port $MAILPIT_WEB_PORT)
-            echoc "36" "   Suggestion: Try port $SUGGESTED_PORT"
-            read -p "   Try again with a different port? (y/n): " retry
-            if [[ ! "$retry" =~ ^[Yy]$ ]]; then
-                echoc "31" "Cannot proceed with port $MAILPIT_WEB_PORT already in use."
-                exit 1
-            fi
-        fi
-    done
+    MAILPIT_SMTP_PORT=$(prompt_for_port "Mailpit SMTP" 1025)
+    MAILPIT_WEB_PORT=$(prompt_for_port "Mailpit Web UI" 8025)
 else
     MAILPIT_SMTP_PORT=1025
     MAILPIT_WEB_PORT=8025
