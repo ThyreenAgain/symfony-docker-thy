@@ -1,4 +1,4 @@
-#!/bin/bash
+ !/bin/bash
 #
 # Symfony Docker Template - Standalone Installer
 #
