@@ -1,9 +1,10 @@
 ---
 # Development environment override
+# Automatically loaded when running `docker compose up`
 services:
   php:
-    # Overwrite the build target for development to use the frankenphp_dev stage
     build:
+      context: .
       target: frankenphp_dev
     volumes:
       # Mount the project code for live development
@@ -16,7 +17,6 @@ services:
       # - /app/var
     environment:
       FRANKENPHP_WORKER_CONFIG: watch
-      MERCURE_EXTRA_DIRECTIVES: demo
       # See https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: "${XDEBUG_MODE:-off}"
       APP_ENV: "${APP_ENV:-dev}"
@@ -26,16 +26,11 @@ services:
     tty: true
 
 ###> symfony/mailer ###
-  # Reusing your existing Mailpit service
-  mailer:
-    image: axllent/mailpit
-    # The setup script will replace these with user-defined host ports: ${MAILPIT_SMTP_PORT}:1025 and ${MAILPIT_WEB_PORT}:8025
-    ports:
-      # SMTP port for Symfony to send mail (1025) and Web UI port (8025)
-      - "1025"
-      - "8025"
-    environment:
-      MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1
-    restart: unless-stopped
+# Mailer service moved to compose.mailer.yaml (optional)
+# Include it with: docker compose -f compose.yaml -f compose.override.yaml -f compose.mailer.yaml up
 ###< symfony/mailer ###
+
+###> symfony/mercure-bundle ###
+# Mercure configuration moved to compose.mercure.yaml (optional)
+# Include it with: docker compose -f compose.yaml -f compose.override.yaml -f compose.mercure.yaml up
+###< symfony/mercure-bundle ###
