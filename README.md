@@ -141,6 +141,31 @@ make logs    # View logs
 make sh      # Access PHP container
 make sf c=about  # Run Symfony commands
 ```
+
+### 🔒 Security-First Installation (No Sudo Required!)
+Unlike many installers, this template **never requires sudo** during setup:
+
+✅ **Safe by design** - No elevated permissions needed  
+✅ **Works everywhere** - Same behavior on Linux, macOS, WSL  
+✅ **User-friendly** - No password prompts or security warnings  
+✅ **Transparent** - Users know exactly what's happening  
+
+**How it works:**
+1. Installer creates project in `/tmp` (always writable)
+2. All operations run with user permissions
+3. Users can move the project manually if desired
+
+**Moving your project later:**
+```bash
+# Option 1: Manual copy (recommended)
+cp -r /tmp/tmp.XXXX/project_name /your/desired/location
+
+# Option 2: Use the helper script
+./scripts/move-to.sh /your/desired/location
+
+# Option 3: Keep it in /tmp (works fine!)
+# Projects in /tmp run exactly the same way
+```
 ## Architecture Overview
 Repository Root
 ├── install.sh              ← NEW! Standalone bootstrap

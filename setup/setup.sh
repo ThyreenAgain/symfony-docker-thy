@@ -490,48 +490,45 @@ echoc "32" "All configuration gathered. Starting setup..."
 echo ""
 
 # --- 3. Determine Project Location ---
-# Always clone in /tmp to avoid permission issues on Windows mounts
+# Always clone in /tmp to avoid permission issues - NO SUDO NEEDED
 WORK_DIR=$(mktemp -d)
-TEMP_PROJECT_DIR="$WORK_DIR/$APP_NAME"
+PROJECT_DIR="$WORK_DIR/$APP_NAME"
 
-# Determine final destination
+# Determine user's desired location (optional, for reference only)
+DESIRED_LOCATION=""
 if [ -n "$PROJECT_PARENT_DIR" ]; then
-    FINAL_PROJECT_DIR="$PROJECT_PARENT_DIR/$APP_NAME"
-    echoc "36" "Project will be created in: $FINAL_PROJECT_DIR"
-else
-    FINAL_PROJECT_DIR="$(pwd)/$APP_NAME"
-fi
-
-if [ -d "$FINAL_PROJECT_DIR" ]; then
-    echoc "31" "ERROR: Directory '${FINAL_PROJECT_DIR}' already exists. Please choose a different project name."
-    rm -rf "$WORK_DIR"
-    exit 1
+    DESIRED_LOCATION="$PROJECT_PARENT_DIR/$APP_NAME"
+    echoc "33" "NOTE: Project will be created in /tmp for safety."
+    echoc "33" "Desired location: $DESIRED_LOCATION"
+    echoc "33" "You can manually move it later with: cp -r $PROJECT_DIR $DESIRED_LOCATION"
+    echo ""
 fi
 
 echo "--- Cloning Symfony Docker Template ---"
 echoc "36" "Cloning repository: $GIT_REPO_URL"
-echoc "36" "Working in temporary directory to avoid permission issues..."
+echoc "36" "Working in temporary directory: $PROJECT_DIR"
+echoc "36" "This approach avoids sudo and permission issues."
 
 # Clone to temp work directory (ALWAYS in /tmp, safe for all filesystems)
-git clone --depth 1 "$GIT_REPO_URL" "$TEMP_PROJECT_DIR"
-rm -rf "$TEMP_PROJECT_DIR/.git" # Remove .git for fresh init
+git clone --depth 1 "$GIT_REPO_URL" "$PROJECT_DIR"
+rm -rf "$PROJECT_DIR/.git" # Remove .git for fresh init
 
 echoc "32" "✔ Template cloned to temporary location."
 
 # --- Copy setup2.sh ---
-cp setup/setup2.sh "$TEMP_PROJECT_DIR/"
+cp setup/setup2.sh "$PROJECT_DIR/"
 
 # Fix line endings and permissions
 if command -v dos2unix &> /dev/null; then
-    dos2unix "$TEMP_PROJECT_DIR/setup2.sh" > /dev/null 2>&1 || true
+    dos2unix "$PROJECT_DIR/setup2.sh" > /dev/null 2>&1 || true
 fi
-chmod +x "$TEMP_PROJECT_DIR/setup2.sh"
+chmod +x "$PROJECT_DIR/setup2.sh"
 
 echoc "32" "✔ Setup scripts prepared."
 echo ""
 
 # --- 4. Execute Setup Part 2 in temp directory---
-cd "$TEMP_PROJECT_DIR"
+cd "$PROJECT_DIR"
 
 echoc "36" "--- Executing Setup Part 2 ---"
 if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE"; then
@@ -539,8 +536,7 @@ if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_
     echoc "31" "ERROR: Setup failed."
     echoc "31" "Cleaning up temporary directory..."
     cd /
-    # Force remove with sudo if needed (handles permission issues)
-    rm -rf "$WORK_DIR" 2>/dev/null || sudo rm -rf "$WORK_DIR" 2>/dev/null || true
+    rm -rf "$WORK_DIR" 2>/dev/null || true
     echoc "31" "============================================================"
     exit 1
 fi
@@ -548,37 +544,22 @@ fi
 echoc "32" "✔ Setup part 2 completed successfully!"
 echo ""
 
-# --- 5. Move project to final destination ---
-echo "--- Moving project to final location ---"
-cd /
-
-# Create parent directory if needed (use sudo if needed for Windows mounts)
-echoc "36" "Creating parent directory..."
-mkdir -p "$(dirname "$FINAL_PROJECT_DIR")" 2>/dev/null || sudo mkdir -p "$(dirname "$FINAL_PROJECT_DIR")" 2>/dev/null || true
-
-# Move from temp to final location (use sudo if needed for Windows mounts)
-echoc "36" "Moving from temporary directory to: $FINAL_PROJECT_DIR"
-if mv "$TEMP_PROJECT_DIR" "$FINAL_PROJECT_DIR" 2>/dev/null; then
-    echoc "32" "✔ Project moved to final location."
-elif sudo mv "$TEMP_PROJECT_DIR" "$FINAL_PROJECT_DIR" 2>/dev/null; then
-    echoc "32" "✔ Project moved to final location (with elevated permissions)."
-else
-    echoc "31" "ERROR: Failed to move project to final location."
-    echoc "31" "Project remains in: $TEMP_PROJECT_DIR"
-    echoc "31" "You can manually move it with: sudo mv $TEMP_PROJECT_DIR $FINAL_PROJECT_DIR"
-    exit 1
-fi
-
-# Cleanup work directory
-rm -rf "$WORK_DIR" 2>/dev/null || sudo rm -rf "$WORK_DIR" 2>/dev/null || true
-
+# --- 5. Final Success Message ---
 echo ""
 echoc "32" "=============================================================="
 echoc "32" "✅ Setup completed successfully!"
 echoc "32" "=============================================================="
 echo ""
-echoc "32" "Project location: $FINAL_PROJECT_DIR"
+echoc "32" "Project location: $PROJECT_DIR"
+if [ -n "$DESIRED_LOCATION" ]; then
+    echo ""
+    echoc "33" "To move to your desired location:"
+    echoc "33" "  cp -r $PROJECT_DIR $DESIRED_LOCATION"
+    echoc "33" "Or use the convenience script:"
+    echoc "33" "  $PROJECT_DIR/scripts/move-to.sh $DESIRED_LOCATION"
+fi
+echo ""
 echoc "32" "To start working:"
-echoc "32" "  cd $FINAL_PROJECT_DIR"
+echoc "32" "  cd $PROJECT_DIR"
 echoc "32" "  make up"
 echo ""
