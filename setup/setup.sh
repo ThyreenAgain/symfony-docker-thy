@@ -494,15 +494,9 @@ echo ""
 WORK_DIR=$(mktemp -d)
 PROJECT_DIR="$WORK_DIR/$APP_NAME"
 
-# Determine user's desired location (optional, for reference only)
-DESIRED_LOCATION=""
-if [ -n "$PROJECT_PARENT_DIR" ]; then
-    DESIRED_LOCATION="$PROJECT_PARENT_DIR/$APP_NAME"
-    echoc "33" "NOTE: Project will be created in /tmp for safety."
-    echoc "33" "Desired location: $DESIRED_LOCATION"
-    echoc "33" "You can manually move it later with: cp -r $PROJECT_DIR $DESIRED_LOCATION"
-    echo ""
-fi
+echoc "33" "NOTE: Project will be created in /tmp for safety."
+echoc "33" "This approach avoids sudo and permission issues."
+echo ""
 
 echo "--- Cloning Symfony Docker Template ---"
 echoc "36" "Cloning repository: $GIT_REPO_URL"
@@ -561,13 +555,11 @@ echoc "32" "✅ Setup completed successfully!"
 echoc "32" "=============================================================="
 echo ""
 echoc "32" "Project location: $PROJECT_DIR"
-if [ -n "$DESIRED_LOCATION" ]; then
-    echo ""
-    echoc "33" "To move to your desired location:"
-    echoc "33" "  cp -r $PROJECT_DIR $DESIRED_LOCATION"
-    echoc "33" "Or use the convenience script:"
-    echoc "33" "  $PROJECT_DIR/scripts/move-to.sh $DESIRED_LOCATION"
-fi
+echo ""
+echoc "33" "To move to your desired location:"
+echoc "33" "  cp -r $PROJECT_DIR /your/desired/location/project_name"
+echoc "33" "Or use the convenience script:"
+echoc "33" "  $PROJECT_DIR/scripts/move-to.sh /your/desired/location/project_name"
 echo ""
 echoc "32" "To start working:"
 echoc "32" "  cd $PROJECT_DIR"
