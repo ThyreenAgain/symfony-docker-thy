@@ -524,6 +524,16 @@ if command -v dos2unix &> /dev/null; then
 fi
 chmod +x "$PROJECT_DIR/setup2.sh"
 
+# --- Copy move-to.sh helper script ---
+mkdir -p "$PROJECT_DIR/scripts"
+cp scripts/move-to.sh "$PROJECT_DIR/scripts/"
+
+# Fix line endings and permissions
+if command -v dos2unix &> /dev/null; then
+    dos2unix "$PROJECT_DIR/scripts/move-to.sh" > /dev/null 2>&1 || true
+fi
+chmod +x "$PROJECT_DIR/scripts/move-to.sh"
+
 echoc "32" "✔ Setup scripts prepared."
 echo ""
 
