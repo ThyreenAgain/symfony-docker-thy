@@ -49,6 +49,9 @@ fi
 echo -e "${GREEN}✓ All dependencies found${NC}"
 echo ""
 
+# Save the original directory where user wants the project
+ORIGINAL_DIR=$(pwd)
+
 # Clone template repository to temporary location
 TEMP_DIR=$(mktemp -d)
 REPO_URL="https://github.com/ThyreenAgain/symfony-docker-thy"
@@ -69,13 +72,20 @@ echo ""
 chmod +x "$TEMP_DIR/setup/setup.sh"
 chmod +x "$TEMP_DIR/setup/setup2.sh"
 
-# Run the full setup process
-cd "$TEMP_DIR"
-./setup/setup.sh
+# Copy setup scripts to original directory and run from there
+cp "$TEMP_DIR/setup/setup.sh" "$ORIGINAL_DIR/"
+cp "$TEMP_DIR/setup/setup2.sh" "$ORIGINAL_DIR/"
+chmod +x "$ORIGINAL_DIR/setup.sh"
+chmod +x "$ORIGINAL_DIR/setup2.sh"
+
+# Run setup from the original directory (where user wants the project)
+cd "$ORIGINAL_DIR"
+./setup.sh
+
+# Cleanup
+rm -f "$ORIGINAL_DIR/setup.sh" "$ORIGINAL_DIR/setup2.sh"
 
 # Cleanup temporary directory
-cd ..
-# Use force and handle permission issues
 chmod -R u+w "$TEMP_DIR" 2>/dev/null || true
 rm -rf "$TEMP_DIR" 2>/dev/null || sudo rm -rf "$TEMP_DIR" 2>/dev/null || true
 
