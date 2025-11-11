@@ -282,6 +282,33 @@ if [ -f composer.json ] && grep -q "doctrine/doctrine-bundle" composer.json 2>/d
         ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T php yarn build || true
     fi
 fi
+ 
+# --- 10. Clean Up Installer Files ---
+echo --- Cleaning up installer files ---
+
+# Remove installer-specific files (not needed in user project)
+rm -f install.sh README.md TODO_AUTOMATED_TESTS.md KNOWN_ISSUES.md UPGRADE_NOTES.md OPTIONAL_FEATURES.md 2>/dev/null || true
+
+# Remove installer directories
+if [ -d "setup" ]; then rm -rf setup 2>/dev/null || true; fi
+if [ -d "docs" ]; then rm -rf docs 2>/dev/null || true; fi
+
+# Create clean project info
+cat > PROJECT_INFO.md << "EOF"
+# Project Created with Symfony Docker Template
+
+This project was created using the Symfony Docker Template.
+For complete documentation, visit: https://github.com/ThyreenAgain/symfony-docker-thy
+
+## Quick Start
+make up    # Start services
+make help  # Show all commands
+EOF
+
+echoc "32" "✔ Installer files cleaned up."
+echo ""
+
+# --- 11. Success Message ---
 
 # --- 10. Success Message ---
 echo ""
