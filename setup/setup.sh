@@ -552,17 +552,20 @@ echo ""
 echo "--- Moving project to final location ---"
 cd /
 
-# Create parent directory if needed
-mkdir -p "$(dirname "$FINAL_PROJECT_DIR")" 2>/dev/null || true
+# Create parent directory if needed (use sudo if needed for Windows mounts)
+echoc "36" "Creating parent directory..."
+mkdir -p "$(dirname "$FINAL_PROJECT_DIR")" 2>/dev/null || sudo mkdir -p "$(dirname "$FINAL_PROJECT_DIR")" 2>/dev/null || true
 
-# Move from temp to final location
+# Move from temp to final location (use sudo if needed for Windows mounts)
 echoc "36" "Moving from temporary directory to: $FINAL_PROJECT_DIR"
-if mv "$TEMP_PROJECT_DIR" "$FINAL_PROJECT_DIR"; then
+if mv "$TEMP_PROJECT_DIR" "$FINAL_PROJECT_DIR" 2>/dev/null; then
     echoc "32" "✔ Project moved to final location."
+elif sudo mv "$TEMP_PROJECT_DIR" "$FINAL_PROJECT_DIR" 2>/dev/null; then
+    echoc "32" "✔ Project moved to final location (with elevated permissions)."
 else
     echoc "31" "ERROR: Failed to move project to final location."
     echoc "31" "Project remains in: $TEMP_PROJECT_DIR"
-    echoc "31" "You can manually move it with: mv $TEMP_PROJECT_DIR $FINAL_PROJECT_DIR"
+    echoc "31" "You can manually move it with: sudo mv $TEMP_PROJECT_DIR $FINAL_PROJECT_DIR"
     exit 1
 fi
 
