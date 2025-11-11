@@ -161,18 +161,15 @@ if [ -f .env.dev.example ]; then
     cp .env.dev.example .env.dev.local
     echoc "36" "Creating .env.dev.local..."
     
-    # Update database credentials using safer approach
-    # Escape special characters for sed
-    DB_USER_ESCAPED=$(echo "$DB_USER" | sed 's/[&/\]/\\&/g')
-    DB_PASSWORD_ESCAPED=$(echo "$DB_PASSWORD" | sed 's/[&/\]/\\&/g')
-    DB_ROOT_PASSWORD_ESCAPED=$(echo "$DB_ROOT_PASSWORD" | sed 's/[&/\]/\\&/g')
-    DB_DATABASE_ESCAPED=$(echo "$DB_DATABASE" | sed 's/[&/\]/\\&/g')
+    # Update database credentials (using pipe delimiter for safety)
+    echoc "36" "Updating database credentials..."
     
+    # Use pipe delimiter for sed (safer than slash when paths/URLs involved)
     sed -i \
-        -e "s|^MYSQL_USER=.*|MYSQL_USER=${DB_USER_ESCAPED}|" \
-        -e "s|^MYSQL_PASSWORD=.*|MYSQL_PASSWORD=${DB_PASSWORD_ESCAPED}|" \
-        -e "s|^MYSQL_ROOT_PASSWORD=.*|MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD_ESCAPED}|" \
-        -e "s|^MYSQL_DATABASE=.*|MYSQL_DATABASE=${DB_DATABASE_ESCAPED}|" \
+        -e "s|^MYSQL_USER=.*|MYSQL_USER=${DB_USER}|" \
+        -e "s|^MYSQL_PASSWORD=.*|MYSQL_PASSWORD=${DB_PASSWORD}|" \
+        -e "s|^MYSQL_ROOT_PASSWORD=.*|MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}|" \
+        -e "s|^MYSQL_DATABASE=.*|MYSQL_DATABASE=${DB_DATABASE}|" \
         -e "s|:3306/|:${DB_HOST_PORT}/|g" \
         .env.dev.local
     

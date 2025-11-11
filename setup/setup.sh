@@ -192,30 +192,30 @@ prompt_for_port() {
         # Check if port is available
         if check_port $input_port "$service_name"; then
             echo "" >&2
-            echoc "32" "✓ Port $input_port is available and will be used"
+            echoc "32" "✓ Port $input_port is available and will be used" >&2
             selected_port=$input_port
-            echo ""
+            echo "" >&2
             break
         else
             echo "" >&2
-            echoc "31" "✗ Port $input_port is already in use" >&2
+            echoc "31" "✗ Port not available" >&2
             echo "Finding next available port..." >&2
             local suggested=$(find_available_port $((input_port + 1)))
             echo "" >&2
             
-            echoc "33" "⚠ Port $input_port is already in use."
-            read -p "   Do you want to use port $suggested instead? (y/n): " use_suggested
+            echoc "33" "⚠ Port $input_port is already in use." >&2
+            read -p "   Do you want to use port $suggested instead? (y/n): " use_suggested >&2
             use_suggested=$(echo "$use_suggested" | tr '[:upper:]' '[:lower:]')
-            echo ""
+            echo "" >&2
             
             if [[ "$use_suggested" == "y" ]]; then
                 selected_port=$suggested
-                echoc "32" "✓ Using port $suggested"
-                echo ""
+                echoc "32" "✓ Using port $suggested" >&2
+                echo "" >&2
                 break
             else
-                echoc "36" "Please enter a different port number."
-                echo ""
+                echoc "36" "Please enter a different port number." >&2
+                echo "" >&2
             fi
             # Loop continues to ask for another port
         fi
