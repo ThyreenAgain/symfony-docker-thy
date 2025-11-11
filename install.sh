@@ -1,4 +1,4 @@
- !/bin/bash
+#!/bin/bash
 #
 # Symfony Docker Template - Standalone Installer
 #
@@ -75,7 +75,9 @@ cd "$TEMP_DIR"
 
 # Cleanup temporary directory
 cd ..
-rm -rf "$TEMP_DIR"
+# Use force and handle permission issues
+chmod -R u+w "$TEMP_DIR" 2>/dev/null || true
+rm -rf "$TEMP_DIR" 2>/dev/null || sudo rm -rf "$TEMP_DIR" 2>/dev/null || true
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
