@@ -539,7 +539,8 @@ if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_
     echoc "31" "ERROR: Setup failed."
     echoc "31" "Cleaning up temporary directory..."
     cd /
-    rm -rf "$WORK_DIR"
+    # Force remove with sudo if needed (handles permission issues)
+    rm -rf "$WORK_DIR" 2>/dev/null || sudo rm -rf "$WORK_DIR" 2>/dev/null || true
     echoc "31" "============================================================"
     exit 1
 fi
@@ -566,7 +567,7 @@ else
 fi
 
 # Cleanup work directory
-rm -rf "$WORK_DIR" 2>/dev/null || true
+rm -rf "$WORK_DIR" 2>/dev/null || sudo rm -rf "$WORK_DIR" 2>/dev/null || true
 
 echo ""
 echoc "32" "=============================================================="
