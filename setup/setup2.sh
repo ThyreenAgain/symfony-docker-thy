@@ -235,8 +235,8 @@ echo ""
 
 # --- 7. Wait for Database ---
 echoc "36" "Waiting for database to be ready..."
-ATTEMPTS=60
-until ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T database mysql -u${DB_USER} -p${DB_PASSWORD} -e "SELECT 1" >/dev/null 2>&1 || [ $ATTEMPTS -eq 0 ]; do
+ATTEMPTS=90
+until ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T database mysqladmin ping -u${DB_USER} -p${DB_PASSWORD} --silent >/dev/null 2>&1 || [ $ATTEMPTS -eq 0 ]; do
     sleep 1
     ATTEMPTS=$((ATTEMPTS - 1))
     echo -n "."
