@@ -68,24 +68,20 @@ fi
 echo -e "${GREEN}✓ Template downloaded${NC}"
 echo ""
 
-# Make setup script executable
+# Make setup scripts executable
 chmod +x "$TEMP_DIR/setup/setup.sh"
 chmod +x "$TEMP_DIR/setup/setup2.sh"
 
-# Copy setup scripts to original directory and run from there
-cp "$TEMP_DIR/setup/setup.sh" "$ORIGINAL_DIR/"
-cp "$TEMP_DIR/setup/setup2.sh" "$ORIGINAL_DIR/"
-chmod +x "$ORIGINAL_DIR/setup.sh"
-chmod +x "$ORIGINAL_DIR/setup2.sh"
+# Export the original directory so setup scripts know where to create the project
+export PROJECT_PARENT_DIR="$ORIGINAL_DIR"
 
-# Run setup from the original directory (where user wants the project)
-cd "$ORIGINAL_DIR"
-./setup.sh
-
-# Cleanup
-rm -f "$ORIGINAL_DIR/setup.sh" "$ORIGINAL_DIR/setup2.sh"
+# Run setup from the temp directory
+# The setup.sh script will create the project in $PROJECT_PARENT_DIR
+cd "$TEMP_DIR"
+./setup/setup.sh
 
 # Cleanup temporary directory
+cd "$ORIGINAL_DIR"
 chmod -R u+w "$TEMP_DIR" 2>/dev/null || true
 rm -rf "$TEMP_DIR" 2>/dev/null || sudo rm -rf "$TEMP_DIR" 2>/dev/null || true
 

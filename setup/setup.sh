@@ -489,9 +489,17 @@ echo ""
 echoc "32" "All configuration gathered. Starting setup..."
 echo ""
 
-# --- 3. Create Project Directory ---
-if [ -d "$APP_NAME" ]; then
-    echoc "31" "ERROR: Directory '${APP_NAME}' already exists. Please choose a different project name."
+# --- 3. Determine Project Location ---
+# If PROJECT_PARENT_DIR is set (by install.sh), use it. Otherwise use current directory.
+if [ -n "$PROJECT_PARENT_DIR" ]; then
+    PROJECT_DIR="$PROJECT_PARENT_DIR/$APP_NAME"
+    echoc "36" "Project will be created in: $PROJECT_DIR"
+else
+    PROJECT_DIR="$APP_NAME"
+fi
+
+if [ -d "$PROJECT_DIR" ]; then
+    echoc "31" "ERROR: Directory '${PROJECT_DIR}' already exists. Please choose a different project name."
     exit 1
 fi
 
@@ -499,39 +507,39 @@ echo "--- Cloning Symfony Docker Template ---"
 echoc "36" "Cloning repository: $GIT_REPO_URL"
 
 # Clone to temporary directory
-git clone --depth 1 "$GIT_REPO_URL" "$APP_NAME.tmp"
-rm -rf "$APP_NAME.tmp/.git" # Remove .git for fresh init
+git clone --depth 1 "$GIT_REPO_URL" "$PROJECT_DIR.tmp"
+rm -rf "$PROJECT_DIR.tmp/.git" # Remove .git for fresh init
 
 # Move to final directory
-mkdir -p "$APP_NAME"
-mv "$APP_NAME.tmp/"* "$APP_NAME/" 2>/dev/null || true
-mv "$APP_NAME.tmp/".* "$APP_NAME/" 2>/dev/null || true
-rm -rf "$APP_NAME.tmp"
+mkdir -p "$PROJECT_DIR"
+mv "$PROJECT_DIR.tmp/"* "$PROJECT_DIR/" 2>/dev/null || true
+mv "$PROJECT_DIR.tmp/".* "$PROJECT_DIR/" 2>/dev/null || true
+rm -rf "$PROJECT_DIR.tmp"
 
 # Fix ownership
 CURRENT_USER=$(whoami)
-if [ "$CURRENT_USER" != "root" ] && [ "$(stat -c '%U' "$APP_NAME" 2>/dev/null || stat -f '%Su' "$APP_NAME")" = "root" ]; then
+if [ "$CURRENT_USER" != "root" ] && [ "$(stat -c '%U' "$PROJECT_DIR" 2>/dev/null || stat -f '%Su' "$PROJECT_DIR")" = "root" ]; then
     echoc "36" "Fixing directory ownership..."
-    sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$APP_NAME"
+    sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$PROJECT_DIR"
 fi
 
 echoc "32" "✔ Template cloned."
 
 # --- Copy setup2.sh ---
-cp setup/setup2.sh "$APP_NAME/"
-sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$APP_NAME" 2>/dev/null || chown -R "$CURRENT_USER:$CURRENT_USER" "$APP_NAME"
+cp setup/setup2.sh "$PROJECT_DIR/"
+sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$PROJECT_DIR" 2>/dev/null || chown -R "$CURRENT_USER:$CURRENT_USER" "$PROJECT_DIR"
 
 # Fix line endings and permissions
 if command -v dos2unix &> /dev/null; then
-    dos2unix "$APP_NAME/setup2.sh" > /dev/null 2>&1 || true
+    dos2unix "$PROJECT_DIR/setup2.sh" > /dev/null 2>&1 || true
 fi
-chmod +x "$APP_NAME/setup2.sh"
+chmod +x "$PROJECT_DIR/setup2.sh"
 
 echoc "32" "✔ Setup scripts prepared."
 echo ""
 
 # --- 4. Execute Setup Part 2 ---
-cd "$APP_NAME"
+cd "$PROJECT_DIR"
 
 echoc "36" "--- Executing Setup Part 2 ---"
 if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE"; then
