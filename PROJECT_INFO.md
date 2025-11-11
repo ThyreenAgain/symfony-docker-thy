@@ -60,6 +60,32 @@ This includes:
 ├── Makefile                  # Convenient commands
 ├── .env.dev.example          # Environment template
 └── scripts/move-to.sh        # Helper for project relocation
+## Moving Your Project
+
+If you need to move this project to a different location:
+
+**1. Stop containers:**
+```bash
+make down
+```
+
+**2. Move/copy to new location:**
+```bash
+cp -r . /your/new/location/project_name
+# or
+mv . /your/new/location/project_name
+```
+
+**3. Start from new location:**
+```bash
+cd /your/new/location/project_name
+make up
+```
+
+Docker will automatically:
+- Mount the new location to `/app` 
+- Reuse existing database volume (data preserved)
+- Start your app from the new location
 ```
 
 ## Support
