@@ -219,6 +219,28 @@ if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
 fi
 
 echoc "32" "✔ .dockercompose file created for easy reference."
+
+    # Enable Mercure in Caddyfile if requested
+    if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
+        echoc "36" "Enabling Mercure in Caddyfile..."
+        # Uncomment the Mercure section in the Caddyfile
+        sed -i \
+            -e "s|^# \+mercure {|mercure {|" \
+            -e "s|^# \+# Publisher JWT key|# Publisher JWT key|" \
+            -e "s|^# \+publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}|publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}|" \
+            -e "s|^# \+# Subscriber JWT key|# Subscriber JWT key|" \
+            -e "s|^# \+subscriber_jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} {env.MERCURE_SUBSCRIBER_JWT_ALG}|subscriber_jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} {env.MERCURE_SUBSCRIBER_JWT_ALG}|" \
+            -e "s|^# \+# Allow anonymous subscribers (double-check that it's what you want)|# Allow anonymous subscribers (double-check that it's what you want)|" \
+            -e "s|^# \+anonymous|anonymous|" \
+            -e "s|^# \+# Enable the subscription API (double-check that it's what you want)|# Enable the subscription API (double-check that it's what you want)|" \
+            -e "s|^# \+subscriptions|subscriptions|" \
+            -e "s|^# \+# Extra directives|# Extra directives|" \
+            -e "s|^# \+{$MERCURE_EXTRA_DIRECTIVES}|{$MERCURE_EXTRA_DIRECTIVES}|" \
+            -e "s|^# \+}|}|" \
+            frankenphp/Caddyfile
+        echoc "32" "✔ Mercure enabled in Caddyfile."
+    fi
+
 echo ""
 
 # --- 5. Building Docker Images ---

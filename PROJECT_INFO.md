@@ -97,5 +97,6 @@ If you encounter issues:
 
 ---
 
-**Template:** Symfony Docker Template by Thyreen  
+**Template:** Symfony Docker Template* by Thyreen  
 **Documentation:** https://github.com/ThyreenAgain/symfony-docker-thy
+forked from https://github.com/dunglas/symfony-docker

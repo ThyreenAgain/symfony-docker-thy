@@ -5,9 +5,14 @@
 services:
   php:
     environment:
+      # Enable Mercure module in FrankenPHP
+      MERCURE_TRANSPORT_URL: bolt:///data/mercure.db
       # Mercure Hub Configuration
       MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_PUBLISHER_JWT_ALG: ${CADDY_MERCURE_JWT_ALG:-HS256}
       MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_ALG: ${CADDY_MERCURE_JWT_ALG:-HS256}
+
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
       MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-443}/.well-known/mercure}
       MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
