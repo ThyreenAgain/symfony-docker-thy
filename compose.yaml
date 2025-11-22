@@ -39,6 +39,8 @@ services:
         target: 443
         published: ${HTTP3_PORT:-443}
         protocol: udp
+  # ADD THIS LINE TEMPORARILY to disable health checks while debugging PHP container startup issues
+  #command: ["sleep", "infinity"] 
 
   database:
     image: mysql:${MYSQL_VERSION:-8}

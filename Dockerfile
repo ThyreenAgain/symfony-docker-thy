@@ -15,6 +15,9 @@ WORKDIR /app
 
 VOLUME /app/var/
 
+#Use bash as deafault so we have history with arrow key
+RUN ln -sf /bin/bash /bin/sh
+
 # persistent / runtime deps
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
