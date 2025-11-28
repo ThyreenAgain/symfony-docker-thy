@@ -165,11 +165,11 @@ XDEBUG_MODE=off
 APP_ENV=dev
 EOF
 
-# Add Mailpit configuration if enabled
-if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
+# Add Mailpit configuration if project-specific Mailpit is enabled
+if [[ "$ENABLE_MAILER" == "y" ]] && [[ -n "$MAILPIT_SMTP_PORT" ]] && [[ -n "$MAILPIT_WEB_PORT" ]]; then
     cat >> .env << EOF
 
-# Mailpit Configuration (Email Testing)
+# Mailpit Configuration (Email Testing - Project-Specific)
 MAILPIT_SMTP_PORT=${MAILPIT_SMTP_PORT}
 MAILPIT_WEB_PORT=${MAILPIT_WEB_PORT}
 EOF
@@ -408,14 +408,20 @@ echo ""
 echo "  Project Name:     ${APP_NAME}"
 echo "  Project Root:     $(pwd)"
 echo "  Application URL:  https://localhost"
-if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
+if [[ "$ENABLE_MAILER" == "y" ]] && [[ -n "$MAILPIT_WEB_PORT" ]]; then
     echo "  Mailpit (Email):  http://localhost:${MAILPIT_WEB_PORT}"
+elif [[ "$ENABLE_MAILER" == "n" ]]; then
+    echo "  Mailpit (Email):  http://localhost:8025 (shared)"
 fi
-echo "  Database Port:    localhost:${DB_HOST_PORT}"
+if [[ "$DB_TYPE" != "none" ]] && [[ -n "$DB_HOST_PORT" ]]; then
+    echo "  Database Port:    localhost:${DB_HOST_PORT}"
+fi
 echo ""
 echo "Enabled Features:"
-if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
-    echo "  ✓ Mailpit (Email testing)"
+if [[ "$ENABLE_MAILER" == "y" ]] && [[ -n "$MAILPIT_WEB_PORT" ]]; then
+    echo "  ✓ Mailpit (Email testing - project-specific)"
+elif [[ "$ENABLE_MAILER" == "n" ]] && [[ -z "$MAILPIT_WEB_PORT" ]]; then
+    echo "  ✓ Mailpit (Email testing - using shared instance at localhost:8025)"
 fi
 if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
     echo "  ✓ Mercure Hub (Real-time messaging)"

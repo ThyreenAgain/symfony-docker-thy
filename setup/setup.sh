@@ -539,7 +539,7 @@ elif [[ "$DB_TYPE" == "postgres" ]] || [[ "$DB_TYPE" == "postgis" ]]; then
 else
     echoc "36" "Standard ports: HTTP=80, HTTPS=443"
 fi
-if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
+if [[ "$ENABLE_MAILER" == "y" ]]; then
     echoc "36" "                Mailpit SMTP=1025, Mailpit Web=8025"
 fi
 echoc "36" "Change these ONLY if you run multiple projects simultaneously."
@@ -556,13 +556,16 @@ else
     DB_HOST_PORT=""
 fi
 
-# Only ask for Mailpit ports if enabled
-if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
+# Only ask for Mailpit ports if project-specific Mailpit is enabled
+# When using shared Mailpit (ENABLE_MAILER=n), ports are not needed in docker compose
+if [[ "$ENABLE_MAILER" == "y" ]]; then
     MAILPIT_SMTP_PORT=$(prompt_for_port "Mailpit SMTP" 1025)
     MAILPIT_WEB_PORT=$(prompt_for_port "Mailpit Web UI" 8025)
 else
-    MAILPIT_SMTP_PORT=1025
-    MAILPIT_WEB_PORT=8025
+    # Using shared Mailpit or no Mailpit - set empty values
+    # setup2.sh will handle configuration appropriately
+    MAILPIT_SMTP_PORT=""
+    MAILPIT_WEB_PORT=""
 fi
 
 echo ""
