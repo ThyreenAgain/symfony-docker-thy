@@ -42,6 +42,9 @@ fi
 
 echo "Symfony version set to: $SYMFONY_VERSION"
 echo "Stability set to: $STABILITY"
+export SYMFONY_VERSION
+export STABILITY
+
 # --- Helper function to detect if running in WSL ---
 is_wsl() {
     if [ -f /proc/version ] && grep -qi microsoft /proc/version; then
