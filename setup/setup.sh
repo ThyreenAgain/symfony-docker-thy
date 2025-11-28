@@ -400,16 +400,15 @@ if [[ "$WANT_MAILPIT" == "y" ]]; then
         echoc "36" "   1. Use the existing shared Mailpit (recommended)"
         echoc "36" "   2. Create a separate Mailpit for this project"
         echo ""
-        read -p "   Use existing shared Mailpit? (y/n, default: y): " USE_EXISTING
-        USE_EXISTING=$(echo "${USE_EXISTING:-y}" | tr '[:upper:]' '[:lower:]')
-        
-        if [[ "$USE_EXISTING" == "y" ]]; then
-            echoc "32" "   ✓ Will configure project to use existing shared Mailpit"
-            ENABLE_MAILER=n
-        else
-            echoc "36" "   Will create project-specific Mailpit"
-            ENABLE_MAILER=y
-        fi
+            read -p "   Enter choice (1/2, default: 1): " MAILPIT_CHOICE
+            MAILPIT_CHOICE=${MAILPIT_CHOICE:-1}
+            if [[ "$MAILPIT_CHOICE" == "1" ]]; then
+                echoc "32" "   ✓ Will configure project to use existing shared Mailpit"
+                ENABLE_MAILER=n
+            else
+                echoc "36" "   Will create project-specific Mailpit"
+                ENABLE_MAILER=y
+            fi
     else
         # No existing Mailpit found
         echoc "32" "   ℹ No existing Mailpit instance detected."
