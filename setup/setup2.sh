@@ -38,10 +38,10 @@ cleanup_on_error() {
 # Set the trap to call cleanup_on_error on any ERR signal
 trap cleanup_on_error ERR
 
-# --- 1. Receive User Input from Arguments (10 ARGUMENTS EXPECTED) ---
-if [ "$#" -ne 10 ]; then
-    echoc "31" "ERROR: This script must be called from setup.sh with 10 arguments."
-    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure>"
+# --- 1. Receive User Input from Arguments (11 ARGUMENTS EXPECTED) ---
+if [ "$#" -ne 11 ]; then
+    echoc "31" "ERROR: This script must be called from setup.sh with 11 arguments."
+    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure> <db_type>"
     exit 1
 fi
 
@@ -55,6 +55,7 @@ MAILPIT_SMTP_PORT=$7
 MAILPIT_WEB_PORT=$8
 ENABLE_MAILER=$9
 ENABLE_MERCURE=${10}
+DB_TYPE=${11}
 
 # Convert app name to lowercase for Docker Compose project name
 PROJECT_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
@@ -62,8 +63,11 @@ PROJECT_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
 echoc "33" "--- Setup Part 2 Initializing ---"
 echoc "36" "Project Name:     ${APP_NAME}"
 echoc "36" "Compose Project:  ${PROJECT_NAME}"
-echoc "36" "Database Name:    ${DB_DATABASE}"
-echoc "36" "DB Host Port:     ${DB_HOST_PORT}"
+echoc "36" "Database Type:    ${DB_TYPE}"
+if [[ "$DB_TYPE" != "none" ]]; then
+    echoc "36" "Database Name:    ${DB_DATABASE}"
+    echoc "36" "DB Host Port:     ${DB_HOST_PORT}"
+fi
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
     echoc "36" "Mailpit Web:      ${MAILPIT_WEB_PORT}"
     echoc "36" "Mailpit SMTP:     ${MAILPIT_SMTP_PORT}"
@@ -84,6 +88,11 @@ fi
 
 # --- 2. Build Compose Files List ---
 COMPOSE_FILES="-f compose.yaml -f compose.override.yaml"
+
+# Add database compose file based on selection
+if [[ "$DB_TYPE" != "none" ]]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f compose.${DB_TYPE}.yaml"
+fi
 
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
     COMPOSE_FILES="$COMPOSE_FILES -f compose.mailer.yaml"
@@ -109,11 +118,19 @@ cat > .env << EOF
 # Docker Compose project name (automatic namespacing)
 COMPOSE_PROJECT_NAME=${PROJECT_NAME}
 
+# Database Type Selection
+DB_TYPE=${DB_TYPE}
+
 # Server Configuration
 SERVER_NAME=localhost
 HTTP_PORT=80
 HTTPS_PORT=443
 HTTP3_PORT=443
+EOF
+
+# Add database-specific configuration
+if [[ "$DB_TYPE" == "mysql" ]]; then
+    cat >> .env << EOF
 
 # MySQL Database Configuration
 MYSQL_VERSION=8
@@ -123,6 +140,20 @@ MYSQL_PASSWORD=${DB_PASSWORD}
 MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 MYSQL_CHARSET=utf8mb4
 DB_HOST_PORT=${DB_HOST_PORT}
+EOF
+elif [[ "$DB_TYPE" == "postgres" ]] || [[ "$DB_TYPE" == "postgis" ]]; then
+    cat >> .env << EOF
+
+# PostgreSQL Database Configuration
+POSTGRES_DB=${DB_DATABASE}
+POSTGRES_USER=${DB_USER}
+POSTGRES_PASSWORD=${DB_PASSWORD}
+DB_HOST_PORT=${DB_HOST_PORT}
+EOF
+fi
+
+# Add Symfony configuration
+cat >> .env << EOF
 
 # Symfony Configuration
 SYMFONY_VERSION=
@@ -161,17 +192,37 @@ if [ -f .env.dev.example ]; then
     cp .env.dev.example .env.dev.local
     echoc "36" "Creating .env.dev.local..."
     
-    # Update database credentials (using pipe delimiter for safety)
-    echoc "36" "Updating database credentials..."
-    
-    # Use pipe delimiter for sed (safer than slash when paths/URLs involved)
-    sed -i \
-        -e "s|^MYSQL_USER=.*|MYSQL_USER=${DB_USER}|" \
-        -e "s|^MYSQL_PASSWORD=.*|MYSQL_PASSWORD=${DB_PASSWORD}|" \
-        -e "s|^MYSQL_ROOT_PASSWORD=.*|MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}|" \
-        -e "s|^MYSQL_DATABASE=.*|MYSQL_DATABASE=${DB_DATABASE}|" \
-        -e "s|:3306/|:${DB_HOST_PORT}/|g" \
-        .env.dev.local
+    # Update database credentials based on DB_TYPE
+    if [[ "$DB_TYPE" != "none" ]]; then
+        echoc "36" "Updating database credentials for ${DB_TYPE}..."
+        
+        if [[ "$DB_TYPE" == "mysql" ]]; then
+            # MySQL configuration
+            sed -i \
+                -e "s|^MYSQL_USER=.*|MYSQL_USER=${DB_USER}|" \
+                -e "s|^MYSQL_PASSWORD=.*|MYSQL_PASSWORD=${DB_PASSWORD}|" \
+                -e "s|^MYSQL_ROOT_PASSWORD=.*|MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}|" \
+                -e "s|^MYSQL_DATABASE=.*|MYSQL_DATABASE=${DB_DATABASE}|" \
+                .env.dev.local
+            
+            # Set DATABASE_URL for MySQL
+            echo "" >> .env.dev.local
+            echo "# Database URL (MySQL)" >> .env.dev.local
+            echo "DATABASE_URL=mysql://\${MYSQL_USER}:\${MYSQL_PASSWORD}@database:3306/\${MYSQL_DATABASE}?serverVersion=\${MYSQL_VERSION}&charset=\${MYSQL_CHARSET}" >> .env.dev.local
+        else
+            # PostgreSQL/PostGIS configuration
+            sed -i \
+                -e "s|^POSTGRES_DB=.*|POSTGRES_DB=${DB_DATABASE}|" \
+                -e "s|^POSTGRES_USER=.*|POSTGRES_USER=${DB_USER}|" \
+                -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${DB_PASSWORD}|" \
+                .env.dev.local
+            
+            # Set DATABASE_URL for PostgreSQL/PostGIS
+            echo "" >> .env.dev.local
+            echo "# Database URL (PostgreSQL/PostGIS)" >> .env.dev.local
+            echo "DATABASE_URL=postgresql://\${POSTGRES_USER}:\${POSTGRES_PASSWORD}@database:5432/\${POSTGRES_DB}?serverVersion=18&charset=utf8" >> .env.dev.local
+        fi
+    fi
     
     # Configure Mailer DSN for shared Mailpit if not using project-specific Mailpit
     if [[ ! "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
@@ -255,22 +306,37 @@ ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} up -d
 echoc "32" "✔ Containers started."
 echo ""
 
-# --- 7. Wait for Database ---
-echoc "36" "Waiting for database to be ready..."
-ATTEMPTS=90
-until ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T database mysqladmin ping -u${DB_USER} -p${DB_PASSWORD} --silent >/dev/null 2>&1 || [ $ATTEMPTS -eq 0 ]; do
-    sleep 1
-    ATTEMPTS=$((ATTEMPTS - 1))
-    echo -n "."
-done
-echo ""
-
-if [ $ATTEMPTS -eq 0 ]; then
-    echoc "31" "ERROR: Database failed to become ready in time."
-    exit 1
+# --- 7. Wait for Database (only if database is configured) ---
+if [[ "$DB_TYPE" != "none" ]]; then
+    echoc "36" "Waiting for database to be ready..."
+    ATTEMPTS=90
+    
+    if [[ "$DB_TYPE" == "mysql" ]]; then
+        until ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T database mysqladmin ping -u${DB_USER} -p${DB_PASSWORD} --silent >/dev/null 2>&1 || [ $ATTEMPTS -eq 0 ]; do
+            sleep 1
+            ATTEMPTS=$((ATTEMPTS - 1))
+            echo -n "."
+        done
+    else
+        # PostgreSQL/PostGIS health check
+        until ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T database pg_isready -U ${DB_USER} >/dev/null 2>&1 || [ $ATTEMPTS -eq 0 ]; do
+            sleep 1
+            ATTEMPTS=$((ATTEMPTS - 1))
+            echo -n "."
+        done
+    fi
+    
+    echo ""
+    
+    if [ $ATTEMPTS -eq 0 ]; then
+        echoc "31" "ERROR: Database failed to become ready in time."
+        exit 1
+    fi
+    
+    echoc "32" "✔ Database is ready."
+else
+    echoc "36" "No database configured - skipping database checks."
 fi
-
-echoc "32" "✔ Database is ready."
 echo ""
 
 # --- 8. Install Dependencies ---

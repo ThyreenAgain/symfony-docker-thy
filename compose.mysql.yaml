@@ -1,0 +1,22 @@
+# compose.yaml
+# Production-ready Docker Compose configuration
+# Uses COMPOSE_PROJECT_NAME for automatic namespacing of all resources
+
+services:
+  ###> doctrine/doctrine-bundle ###
+  database:
+    image: mysql:${MYSQL_VERSION:-8}
+    ports:
+      - "${DB_HOST_PORT:-3306}:3306"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-app}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-!ChangeMe!}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-!ChangeMe!}
+      MYSQL_USER: ${MYSQL_USER:-app}
+      MYSQL_CHARSET: ${MYSQL_CHARSET:-utf8mb4}
+    volumes:
+      - db_data:/var/lib/mysql
+###< doctrine/doctrine-bundle ###
+
+volumes:
+  db_data:

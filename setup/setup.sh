@@ -305,6 +305,49 @@ GIT_REPO_URL="https://github.com/ThyreenAgain/symfony-docker-thy"
 echoc "36" "Using template repository: $GIT_REPO_URL"
 echo ""
 
+# --- Database Selection ---
+echo "--- Database Configuration ---"
+echoc "36" "📊 Database Selection:"
+echoc "36" "   Choose which database to install (if any)."
+echo ""
+
+read -p "   Do you want to install a database? (y/n, default: y): " WANT_DATABASE
+WANT_DATABASE=$(echo "${WANT_DATABASE:-y}" | tr '[:upper:]' '[:lower:]')
+echo ""
+
+DB_TYPE="none"
+if [[ "$WANT_DATABASE" == "y" ]]; then
+    echoc "36" "   Select database type:"
+    echoc "36" "   1. MySQL (default)"
+    echoc "36" "   2. PostgreSQL"
+    echoc "36" "   3. PostGIS (PostgreSQL with spatial extensions)"
+    echo ""
+    read -p "   Enter choice (1-3, default: 1): " DB_CHOICE
+    DB_CHOICE=${DB_CHOICE:-1}
+    
+    case $DB_CHOICE in
+        1)
+            DB_TYPE="mysql"
+            echoc "32" "   ✓ Selected: MySQL"
+            ;;
+        2)
+            DB_TYPE="postgres"
+            echoc "32" "   ✓ Selected: PostgreSQL"
+            ;;
+        3)
+            DB_TYPE="postgis"
+            echoc "32" "   ✓ Selected: PostGIS"
+            ;;
+        *)
+            echoc "31" "   Invalid choice. Defaulting to MySQL."
+            DB_TYPE="mysql"
+            ;;
+    esac
+else
+    echoc "36" "   No database will be installed."
+fi
+echo ""
+
 # --- Optional Features ---
 echo "--- Optional Features ---"
 echoc "36" "The following features can be added to your project:"
@@ -402,71 +445,100 @@ read -p "   Enable Mercure? (y/n, default: n): " ENABLE_MERCURE
 ENABLE_MERCURE=$(echo "${ENABLE_MERCURE:-n}" | tr '[:upper:]' '[:lower:]')
 echo ""
 
-# --- Get DB Credentials ---
-echo "--- Database Configuration ---"
-
-# Database Name
-while true; do
-    read -p "Enter MySQL Database Name (Default: '${APP_NAME}_db'): " DB_DATABASE
-    DB_DATABASE=${DB_DATABASE:-"${APP_NAME}_db"}
+# --- Get DB Credentials (only if database selected) ---
+if [[ "$DB_TYPE" != "none" ]]; then
+    echo "--- Database Credentials ---"
     
-    # Sanitize: lowercase, convert hyphens to underscores, only alphanumeric and underscore
-    SANITIZED_DB=$(echo "$DB_DATABASE" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/[^a-z0-9_]//g')
-    
-    if [ "$DB_DATABASE" != "$SANITIZED_DB" ]; then
-        echoc "33" "⚠ Database name contained invalid characters. Converting to: $SANITIZED_DB"
-        DB_DATABASE="$SANITIZED_DB"
+    # Determine database type label and default port
+    if [[ "$DB_TYPE" == "mysql" ]]; then
+        DB_LABEL="MySQL"
+        DEFAULT_PORT=3306
+    else
+        DB_LABEL="PostgreSQL"
+        DEFAULT_PORT=5432
     fi
     
-    if [ -z "$DB_DATABASE" ]; then
-        echoc "31" "⚠ Database name cannot be empty."
-        continue
+    # Database Name
+    while true; do
+        read -p "Enter $DB_LABEL Database Name (Default: '${APP_NAME}_db'): " DB_DATABASE
+        DB_DATABASE=${DB_DATABASE:-"${APP_NAME}_db"}
+        
+        # Sanitize: lowercase, convert hyphens to underscores, only alphanumeric and underscore
+        SANITIZED_DB=$(echo "$DB_DATABASE" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/[^a-z0-9_]//g')
+        
+        if [ "$DB_DATABASE" != "$SANITIZED_DB" ]; then
+            echoc "33" "⚠ Database name contained invalid characters. Converting to: $SANITIZED_DB"
+            DB_DATABASE="$SANITIZED_DB"
+        fi
+        
+        if [ -z "$DB_DATABASE" ]; then
+            echoc "31" "⚠ Database name cannot be empty."
+            continue
+        fi
+        
+        echoc "32" "✓ Database name: $DB_DATABASE"
+        break
+    done
+    
+    # Database User
+    DEFAULT_DB_USER=$(echo "${APP_NAME}_user" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')
+    while true; do
+        read -p "Enter $DB_LABEL User (Default: '${DEFAULT_DB_USER}'): " DB_USER
+        DB_USER=${DB_USER:-"${DEFAULT_DB_USER}"}
+        
+        # Sanitize: lowercase, convert hyphens to underscores, only alphanumeric and underscore
+        SANITIZED_USER=$(echo "$DB_USER" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/[^a-z0-9_]//g')
+        
+        if [ "$DB_USER" != "$SANITIZED_USER" ]; then
+            echoc "33" "⚠ Username contained invalid characters. Converting to: $SANITIZED_USER"
+            DB_USER="$SANITIZED_USER"
+        fi
+        
+        if [ -z "$DB_USER" ]; then
+            echoc "31" "⚠ Username cannot be empty."
+            continue
+        fi
+        
+        echoc "32" "✓ Database user: $DB_USER"
+        break
+    done
+    
+    # Database Password
+    read -s -p "Enter $DB_LABEL Password: " DB_PASSWORD
+    echo ""
+    if [ -z "$DB_PASSWORD" ]; then
+        echoc "31" "Database password cannot be empty."
+        exit 1
     fi
     
-    echoc "32" "✓ Database name: $DB_DATABASE"
-    break
-done
-
-# Database User
-DEFAULT_DB_USER=$(echo "${APP_NAME}_user" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]//g')
-while true; do
-    read -p "Enter MySQL User (Default: '${DEFAULT_DB_USER}'): " DB_USER
-    DB_USER=${DB_USER:-"${DEFAULT_DB_USER}"}
-    
-    # Sanitize: lowercase, convert hyphens to underscores, only alphanumeric and underscore
-    SANITIZED_USER=$(echo "$DB_USER" | tr '[:upper:]' '[:lower:]' | tr '-' '_' | sed 's/[^a-z0-9_]//g')
-    
-    if [ "$DB_USER" != "$SANITIZED_USER" ]; then
-        echoc "33" "⚠ Username contained invalid characters. Converting to: $SANITIZED_USER"
-        DB_USER="$SANITIZED_USER"
+    # MySQL needs root password, PostgreSQL doesn't
+    if [[ "$DB_TYPE" == "mysql" ]]; then
+        read -s -p "Enter MySQL Root Password: " DB_ROOT_PASSWORD
+        echo ""
+        if [ -z "$DB_ROOT_PASSWORD" ]; then
+            echoc "31" "Database root password cannot be empty."
+            exit 1
+        fi
+    else
+        DB_ROOT_PASSWORD=""
     fi
-    
-    if [ -z "$DB_USER" ]; then
-        echoc "31" "⚠ Username cannot be empty."
-        continue
-    fi
-    
-    echoc "32" "✓ Database user: $DB_USER"
-    break
-done
-
-read -s -p "Enter MySQL Password: " DB_PASSWORD
-echo ""
-if [ -z "$DB_PASSWORD" ]; then
-    echoc "31" "Database password cannot be empty."
-    exit 1
-fi
-
-read -s -p "Enter MySQL Root Password: " DB_ROOT_PASSWORD
-echo ""
-if [ -z "$DB_ROOT_PASSWORD" ]; then
-    echoc "31" "Database root password cannot be empty."
-    exit 1
+else
+    # Set empty values when no database
+    DB_DATABASE=""
+    DB_USER=""
+    DB_PASSWORD=""
+    DB_ROOT_PASSWORD=""
 fi
 
 echo ""
 echoc "36" "--- Port Configuration ---"
-echoc "36" "Standard ports: HTTP=80, HTTPS=443, MySQL=3306"
+if [[ "$DB_TYPE" == "mysql" ]]; then
+    echoc "36" "Standard ports: HTTP=80, HTTPS=443, MySQL=3306"
+elif [[ "$DB_TYPE" == "postgres" ]] || [[ "$DB_TYPE" == "postgis" ]]; then
+    echoc "36" "Standard ports: HTTP=80, HTTPS=443, PostgreSQL=5432"
+else
+    echoc "36" "Standard ports: HTTP=80, HTTPS=443"
+fi
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
     echoc "36" "                Mailpit SMTP=1025, Mailpit Web=8025"
 fi
@@ -474,7 +546,15 @@ echoc "36" "Change these ONLY if you run multiple projects simultaneously."
 echo ""
 
 # --- Get Unique Ports with availability checking ---
-DB_HOST_PORT=$(prompt_for_port "MySQL" 3306)
+if [[ "$DB_TYPE" != "none" ]]; then
+    if [[ "$DB_TYPE" == "mysql" ]]; then
+        DB_HOST_PORT=$(prompt_for_port "MySQL" 3306)
+    else
+        DB_HOST_PORT=$(prompt_for_port "PostgreSQL" 5432)
+    fi
+else
+    DB_HOST_PORT=""
+fi
 
 # Only ask for Mailpit ports if enabled
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
@@ -535,7 +615,7 @@ echo ""
 cd "$PROJECT_DIR"
 
 echoc "36" "--- Executing Setup Part 2 ---"
-if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE"; then
+if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE" "$DB_TYPE"; then
     echoc "31" "============================================================"
     echoc "31" "ERROR: Setup failed."
     echoc "31" "Cleaning up temporary directory..."

@@ -10,7 +10,8 @@ services:
       SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
       DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-443}
       # Database connection
-      DATABASE_URL: mysql://${MYSQL_USER:-app}:${MYSQL_PASSWORD:-!ChangeMe!}@database:3306/${MYSQL_DATABASE:-app}?serverVersion=${MYSQL_VERSION:-8}&charset=${MYSQL_CHARSET:-utf8mb4}
+      # Database connection - configured by selected database compose file
+      # See compose.mysql.yaml, compose.postgres.yaml, or compose.postgis.yaml
       # Mercure configuration (optional - only needed if using symfony/mercure-bundle)
       # Uncomment these lines if you install Mercure:
       # MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
@@ -21,8 +22,6 @@ services:
       # Initial installation variables (can be removed after first setup)
       SYMFONY_VERSION: ${SYMFONY_VERSION:-}
       STABILITY: ${STABILITY:-stable}
-    depends_on:
-      - database
     volumes:
       - caddy_data:/data
       - caddy_config:/config
@@ -39,28 +38,17 @@ services:
         target: 443
         published: ${HTTP3_PORT:-443}
         protocol: udp
-  # ADD THIS LINE TEMPORARILY to disable health checks while debugging PHP container startup issues
-  #command: ["sleep", "infinity"] 
-
-  database:
-    image: mysql:${MYSQL_VERSION:-8}
-    ports:
-      - "${DB_HOST_PORT:-3306}:3306"
-    environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-app}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-!ChangeMe!}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-!ChangeMe!}
-      MYSQL_USER: ${MYSQL_USER:-app}
-      MYSQL_CHARSET: ${MYSQL_CHARSET:-utf8mb4}
-    volumes:
-      - db_data:/var/lib/mysql
+  # Database service is configured in separate compose files:
+  # - compose.mysql.yaml for MySQL
+  # - compose.postgres.yaml for PostgreSQL
+  # - compose.postgis.yaml for PostGIS
+  # The setup script and Makefile will automatically include the correct file
 
 # Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
 ###> symfony/mercure-bundle ###
 ###< symfony/mercure-bundle ###
 
 volumes:
-  db_data:
   caddy_data:
   caddy_config:
 ###> symfony/mercure-bundle ###

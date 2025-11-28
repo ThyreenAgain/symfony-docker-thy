@@ -1,8 +1,30 @@
 # Executables (local)
 DOCKER_COMP = docker compose
 
+# Detect which compose files to use based on .env configuration
+# Read DB_TYPE from .env file (default to mysql if not set for backward compatibility)
+DB_TYPE := $(shell grep -E '^DB_TYPE=' .env 2>/dev/null | cut -d '=' -f2 || echo "mysql")
+
+# Build compose file list
+COMPOSE_FILES := -f compose.yaml -f compose.override.yaml
+
+# Add database compose file if DB_TYPE is not "none"
+ifneq ($(DB_TYPE),none)
+    COMPOSE_FILES += -f compose.$(DB_TYPE).yaml
+endif
+
+# Add Mercure compose file if configured (check for CADDY_MERCURE_JWT_SECRET in .env)
+ifneq ($(shell grep -E '^CADDY_MERCURE_JWT_SECRET=' .env 2>/dev/null),)
+    COMPOSE_FILES += -f compose.mercure.yaml
+endif
+
+# Add Mailer compose file if configured (check for MAILPIT_WEB_PORT in .env)
+ifneq ($(shell grep -E '^MAILPIT_WEB_PORT=' .env 2>/dev/null),)
+    COMPOSE_FILES += -f compose.mailer.yaml
+endif
+
 # Docker containers
-PHP_CONT = $(DOCKER_COMP) exec php
+PHP_CONT = $(DOCKER_COMP) $(COMPOSE_FILES) exec php
 
 # Executables
 PHP      = $(PHP_CONT) php
@@ -19,22 +41,22 @@ help: ## Outputs this help screen
 
 ## —— Docker 🐳 ————————————————————————————————————————————————————————————————
 build: ## Builds the Docker images
-	@$(DOCKER_COMP) build --pull --no-cache
+	@$(DOCKER_COMP) $(COMPOSE_FILES) build --pull --no-cache
 
 up: ## Start the docker hub in detached mode (no logs)
-	@$(DOCKER_COMP) -f compose.yaml -f compose.override.yaml -f compose.mercure.yaml up --detach
+	@$(DOCKER_COMP) $(COMPOSE_FILES) up --detach
 
 up-debug: ## Start the docker hub in detached mode (no logs)
-	@$(DOCKER_COMP) -f compose.yaml -f compose.override.yaml -f compose.mercure.yaml up --wait&set XDEBUG_MODE=debug --detach 
+	@$(DOCKER_COMP) $(COMPOSE_FILES) up --wait&set XDEBUG_MODE=debug --detach
 
 
 start: build up ## Build and start the containers
 
 down: ## Stop the docker hub
-	@$(DOCKER_COMP) -f compose.yaml -f compose.override.yaml -f compose.mercure.yaml down --remove-orphans
+	@$(DOCKER_COMP) $(COMPOSE_FILES) down --remove-orphans
 
 logs: ## Show live logs
-	@$(DOCKER_COMP) -f compose.yaml -f compose.override.yaml -f compose.mercure.yaml logs --tail=0 --follow
+	@$(DOCKER_COMP) $(COMPOSE_FILES) logs --tail=0 --follow
 
 install-cert: ## Install Caddy certificate to system certificate store
 	@echo "Detecting operating system and installing certificate..."
