@@ -19,6 +19,7 @@ echoc() {
 # --- Cleanup function to run on failure ---
 cleanup_on_error() {
     local exit_code=$?
+    exit $exit_code
     echoc "31" "============================================================"
     echoc "31" "ERROR: A command failed with exit code $exit_code."
     echoc "31" "Rollback: Attempting to clean up Docker services..."
