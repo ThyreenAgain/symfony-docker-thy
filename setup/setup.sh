@@ -27,6 +27,21 @@ echoc() {
     echo -e "\033[${COLOR}m$@\033[0m"
 }
 
+echo "Which Symfony version do you want to use? (default: 7.4)"
+read -r SYMFONY_VERSION
+if [ -z "$SYMFONY_VERSION" ]; then
+    SYMFONY_VERSION="7.4"
+fi
+
+echo "Which package stability do you need?"
+echo "Options: dev, alpha, beta, RC, stable (default: stable)"
+read -r STABILITY
+if [ -z "$STABILITY" ]; then
+    STABILITY="stable"
+fi
+
+echo "Symfony version set to: $SYMFONY_VERSION"
+echo "Stability set to: $STABILITY"
 # --- Helper function to detect if running in WSL ---
 is_wsl() {
     if [ -f /proc/version ] && grep -qi microsoft /proc/version; then
@@ -648,3 +663,4 @@ echoc "32" "To start working:"
 echoc "32" "  cd $PROJECT_DIR"
 echoc "32" "  make up"
 echo ""
+
