@@ -27,10 +27,10 @@ echoc() {
     echo -e "\033[${COLOR}m$@\033[0m"
 }
 
-echo "Which Symfony version do you want to use? (default: 7.4)"
+echo "Which Symfony version do you want to use? (default: 7.4.*)"
 read -r SYMFONY_VERSION
 if [ -z "$SYMFONY_VERSION" ]; then
-    SYMFONY_VERSION="7.4"
+    SYMFONY_VERSION="7.4.*"
 fi
 
 echo "Which package stability do you need?"
