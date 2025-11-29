@@ -378,27 +378,10 @@ else
 fi
 echo ""
 
-# --- 8. Install Dependencies ---
-echo "--- Installing Project Dependencies ---"
-
-if [ ! -f composer.json ]; then
-    echoc "36" "No composer.json found - Symfony will be installed on first container start."
-    echoc "36" "The docker-entrypoint.sh script will handle initial installation."
-else
-    echoc "36" "Running 'composer install'..."
-    ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T php composer install --no-interaction --prefer-dist --optimize-autoloader
-    
-    if [ -f package.json ]; then
-        echoc "36" "Running 'yarn install'..."
-        ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T php yarn install
-    fi
-    
-    echoc "32" "✔ Dependencies installed."
-fi
 
 echo ""
 
-# --- 9. Database Migrations (if applicable) ---
+# --- 8. Database Migrations (if applicable) ---
 if [ -f composer.json ] && grep -q "doctrine/doctrine-bundle" composer.json 2>/dev/null; then
     echo "--- Running Database Migrations ---"
     echoc "36" "Running database migrations (if any)..."
@@ -410,7 +393,7 @@ if [ -f composer.json ] && grep -q "doctrine/doctrine-bundle" composer.json 2>/d
     fi
 fi
  
-# --- 10. Clean Up Installer Files ---
+# --- 9. Clean Up Installer Files ---
 echo --- Cleaning up installer files ---
 
 # Remove installer-specific files (not needed in user project)
