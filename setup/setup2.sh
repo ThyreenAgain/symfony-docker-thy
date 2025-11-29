@@ -157,8 +157,8 @@ fi
 cat >> .env << EOF
 
 # Symfony Configuration
-SYMFONY_VERSION=
-STABILITY=stable
+SYMFONY_VERSION=${SYMFONY_VERSION}
+STABILITY=${STABILITY}
 
 # Development Tools
 XDEBUG_MODE=off
@@ -187,6 +187,44 @@ EOF
 fi
 
 echoc "32" "✔ .env file created with project configuration."
+
+# Update parent .env file for DB_TYPE and remove unused DB vars
+if [ -f "../.env" ]; then
+    cp ../.env ../.env.bak
+    sed -i '/MYSQL_USER=/d;/MYSQL_PASSWORD=/d;/MYSQL_DATABASE=/d;/MYSQL_ROOT_PASSWORD=/d;/MYSQL_VERSION=/d;/MYSQL_CHARSET=/d;/POSTGRES_DB=/d;/POSTGRES_USER=/d;/POSTGRES_PASSWORD=/d;/DB_TYPE=/d' ../.env
+    echo "DB_TYPE=${DB_TYPE}" >> ../.env
+    if [[ "$DB_TYPE" == "mysql" ]]; then
+        echo "MYSQL_USER=${DB_USER}" >> ../.env
+        echo "MYSQL_PASSWORD=${DB_PASSWORD}" >> ../.env
+        echo "MYSQL_DATABASE=${DB_DATABASE}" >> ../.env
+        echo "MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}" >> ../.env
+        echo "MYSQL_VERSION=8" >> ../.env
+        echo "MYSQL_CHARSET=utf8mb4" >> ../.env
+    elif [[ "$DB_TYPE" == "postgres" || "$DB_TYPE" == "postgis" ]]; then
+        echo "POSTGRES_DB=${DB_DATABASE}" >> ../.env
+        echo "POSTGRES_USER=${DB_USER}" >> ../.env
+        echo "POSTGRES_PASSWORD=${DB_PASSWORD}" >> ../.env
+    fi
+fi
+
+# Update parent .env.dev.local for DB_TYPE and user values
+if [ -f "../.env.dev.local" ]; then
+    cp ../.env.dev.local ../.env.dev.local.bak
+    sed -i '/MYSQL_USER=/d;/MYSQL_PASSWORD=/d;/MYSQL_DATABASE=/d;/MYSQL_ROOT_PASSWORD=/d;/MYSQL_VERSION=/d;/MYSQL_CHARSET=/d;/POSTGRES_DB=/d;/POSTGRES_USER=/d;/POSTGRES_PASSWORD=/d;/DB_TYPE=/d' ../.env.dev.local
+    echo "DB_TYPE=${DB_TYPE}" >> ../.env.dev.local
+    if [[ "$DB_TYPE" == "mysql" ]]; then
+        echo "MYSQL_USER=${DB_USER}" >> ../.env.dev.local
+        echo "MYSQL_PASSWORD=${DB_PASSWORD}" >> ../.env.dev.local
+        echo "MYSQL_DATABASE=${DB_DATABASE}" >> ../.env.dev.local
+        echo "MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}" >> ../.env.dev.local
+        echo "MYSQL_VERSION=8" >> ../.env.dev.local
+        echo "MYSQL_CHARSET=utf8mb4" >> ../.env.dev.local
+    elif [[ "$DB_TYPE" == "postgres" || "$DB_TYPE" == "postgis" ]]; then
+        echo "POSTGRES_DB=${DB_DATABASE}" >> ../.env.dev.local
+        echo "POSTGRES_USER=${DB_USER}" >> ../.env.dev.local
+        echo "POSTGRES_PASSWORD=${DB_PASSWORD}" >> ../.env.dev.local
+    fi
+fi
 
 # Create .env.dev.local from the example file
 if [ -f .env.dev.example ]; then

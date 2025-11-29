@@ -4,6 +4,10 @@
 
 services:
   php:
+    build:
+      context: .
+      args:
+        DB_TYPE: ${DB_TYPE}
     image: app-php
     restart: unless-stopped
     environment:

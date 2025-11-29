@@ -9,6 +9,7 @@ FROM dunglas/frankenphp:1-php8.4 AS frankenphp_upstream
 
 
 # Base FrankenPHP image
+ARG DB_TYPE=mysql
 FROM frankenphp_upstream AS frankenphp_base
 
 WORKDIR /app
@@ -84,8 +85,11 @@ COPY --link frankenphp/Caddyfile /etc/frankenphp/Caddyfile
 ENTRYPOINT ["docker-entrypoint"]
 
 ###> doctrine/doctrine-bundle ###
-#RUN install-php-extensions pdo_pgsql
-RUN install-php-extensions pdo_mysql
+RUN if [ "$DB_TYPE" = "mysql" ]; then \
+        install-php-extensions pdo_mysql; \
+    elif [ "$DB_TYPE" = "postgres" ] || [ "$DB_TYPE" = "postgis" ]; then \
+        install-php-extensions pdo_pgsql; \
+    fi
 ###< doctrine/doctrine-bundle ###
 
 HEALTHCHECK --start-period=60s CMD curl -f http://localhost:2019/metrics || exit 1
