@@ -400,8 +400,8 @@ echo --- Cleaning up installer files ---
 rm -f install.sh DATABASE_SELECTION_IMPLEMENTATION_SUMMARY.md ARCHITECTURE_PLAN_DB_SELECTION.md README.md TODO_AUTOMATED_TESTS.md KNOWN_ISSUES.md UPGRADE_NOTES.md OPTIONAL_FEATURES.md 2>/dev/null  || true
 
 # Remove installer directories
-if [ -d "setup" ]; then rm -rf setup 2>/dev/null  || true;; fi
-if [ -d "docs" ]; then rm -rf docs 2>/dev/null  || true;; fi
+if [ -d "setup" ]; then rm -rf setup 2>/dev/null  || true; fi
+if [ -d "docs" ]; then rm -rf docs 2>/dev/null  || true; fi
 
 # Create clean project info
 cat > PROJECT_INFO.md << "EOF"
