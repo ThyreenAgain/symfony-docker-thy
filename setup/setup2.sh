@@ -395,13 +395,14 @@ fi
  
 # --- 9. Clean Up Installer Files ---
 echo --- Cleaning up installer files ---
-
+pwd
+ls -als
 # Remove installer-specific files (not needed in user project)
-rm -f install.sh README.md TODO_AUTOMATED_TESTS.md KNOWN_ISSUES.md UPGRADE_NOTES.md OPTIONAL_FEATURES.md 2>/dev/null || true
+rm -f install.sh README.md TODO_AUTOMATED_TESTS.md KNOWN_ISSUES.md UPGRADE_NOTES.md OPTIONAL_FEATURES.md 2>/dev/null 
 
 # Remove installer directories
-if [ -d "setup" ]; then rm -rf setup 2>/dev/null || true; fi
-if [ -d "docs" ]; then rm -rf docs 2>/dev/null || true; fi
+if [ -d "setup" ]; then rm -rf setup 2>/dev/null ; fi
+if [ -d "docs" ]; then rm -rf docs 2>/dev/null ; fi
 
 # Create clean project info
 cat > PROJECT_INFO.md << "EOF"
@@ -414,7 +415,7 @@ For complete documentation, visit: https://github.com/ThyreenAgain/symfony-docke
 make up    # Start services
 make help  # Show all commands
 EOF
-
+ls -als
 echoc "32" "✔ Installer files cleaned up."
 echo ""
 
