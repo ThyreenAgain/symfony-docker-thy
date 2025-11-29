@@ -661,8 +661,10 @@ echoc "33" "  cp -r $PROJECT_DIR /your/desired/location/project_name"
 echoc "33" "Or use the convenience script:"
 echoc "33" "  $PROJECT_DIR/scripts/move-to.sh /your/desired/location/project_name"
 echo ""
-echoc "32" "To start working:"
+echoc "32" "Docker container is started Next time just use:"
 echoc "32" "  cd $PROJECT_DIR"
 echoc "32" "  make up"
 echo ""
-
+echoc "33""Need help with TLS/SSL setup? Follow the guide at:
+echoc "33" "https://github.com/ThyreenAgain/symfony-docker-thy/blob/main/docs/tls.md"https://github.com/ThyreenAgain/symfony-docker-thy/blob/main/docs/tls.md"
+echo ""
