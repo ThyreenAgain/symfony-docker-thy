@@ -67,6 +67,7 @@ echoc "36" "Compose Project:  ${PROJECT_NAME}"
 echoc "36" "Database Type:    ${DB_TYPE}"
 if [[ "$DB_TYPE" != "none" ]]; then
     echoc "36" "Database Name:    ${DB_DATABASE}"
+    echoc "36" "Database Name:    ${DB_USER}"
     echoc "36" "DB Host Port:     ${DB_HOST_PORT}"
 fi
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
