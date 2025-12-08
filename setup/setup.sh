@@ -562,7 +562,14 @@ fi
 echoc "36" "Change these ONLY if you run multiple projects simultaneously."
 echo ""
 
+
 # --- Get Unique Ports with availability checking ---
+# 1. HTTP Port
+HTTP_PORT=$(prompt_for_port "Webserver HTTP" 8080)
+# 2. HTTPS Port
+HTTPS_PORT=$(prompt_for_port "Webserver HTTPS" 8443)
+
+# 3. Database Port
 if [[ "$DB_TYPE" != "none" ]]; then
     if [[ "$DB_TYPE" == "mysql" ]]; then
         DB_HOST_PORT=$(prompt_for_port "MySQL" 3306)
@@ -573,17 +580,21 @@ else
     DB_HOST_PORT=""
 fi
 
-# Only ask for Mailpit ports if project-specific Mailpit is enabled
-# When using shared Mailpit (ENABLE_MAILER=n), ports are not needed in docker compose
+# 4. Mailpit Ports (if enabled)
 if [[ "$ENABLE_MAILER" == "y" ]]; then
     MAILPIT_SMTP_PORT=$(prompt_for_port "Mailpit SMTP" 1025)
     MAILPIT_WEB_PORT=$(prompt_for_port "Mailpit Web UI" 8025)
 else
-    # Using shared Mailpit or no Mailpit - set empty values
-    # setup2.sh will handle configuration appropriately
     MAILPIT_SMTP_PORT=""
     MAILPIT_WEB_PORT=""
 fi
+
+# Export for setup2.sh
+export HTTP_PORT
+export HTTPS_PORT
+export DB_HOST_PORT
+export MAILPIT_SMTP_PORT
+export MAILPIT_WEB_PORT
 
 echo ""
 echoc "32" "All configuration gathered. Starting setup..."
@@ -635,7 +646,7 @@ echo ""
 cd "$PROJECT_DIR"
 
 echoc "36" "--- Executing Setup Part 2 ---"
-if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE" "$DB_TYPE"; then
+if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE" "$DB_TYPE" "$HTTP_PORT" "$HTTPS_PORT"; then
     echoc "31" "============================================================"
     echoc "31" "ERROR: Setup failed."
     echoc "31" "Cleaning up temporary directory..."

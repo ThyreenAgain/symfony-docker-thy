@@ -39,10 +39,10 @@ cleanup_on_error() {
 # Set the trap to call cleanup_on_error on any ERR signal
 trap cleanup_on_error ERR
 
-# --- 1. Receive User Input from Arguments (11 ARGUMENTS EXPECTED) ---
-if [ "$#" -ne 11 ]; then
-    echoc "31" "ERROR: This script must be called from setup.sh with 11 arguments."
-    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure> <db_type>"
+# --- 1. Receive User Input from Arguments (13 ARGUMENTS EXPECTED) ---
+if [ "$#" -ne 13 ]; then
+    echoc "31" "ERROR: This script must be called from setup.sh with 13 arguments."
+    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure> <db_type> <http_port> <https_port>"
     exit 1
 fi
 
@@ -57,6 +57,8 @@ MAILPIT_WEB_PORT=$8
 ENABLE_MAILER=$9
 ENABLE_MERCURE=${10}
 DB_TYPE=${11}
+HTTP_PORT=${12}
+HTTPS_PORT=${13}
 
 # Convert app name to lowercase for Docker Compose project name
 PROJECT_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
@@ -65,9 +67,11 @@ echoc "33" "--- Setup Part 2 Initializing ---"
 echoc "36" "Project Name:     ${APP_NAME}"
 echoc "36" "Compose Project:  ${PROJECT_NAME}"
 echoc "36" "Database Type:    ${DB_TYPE}"
+echoc "36" "HTTP Port:        ${HTTP_PORT}"
+echoc "36" "HTTPS Port:       ${HTTPS_PORT}"
 if [[ "$DB_TYPE" != "none" ]]; then
     echoc "36" "Database Name:    ${DB_DATABASE}"
-    echoc "36" "Database Name:    ${DB_USER}"
+    echoc "36" "Database User:    ${DB_USER}"
     echoc "36" "DB Host Port:     ${DB_HOST_PORT}"
 fi
 if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
@@ -125,9 +129,9 @@ DB_TYPE=${DB_TYPE}
 
 # Server Configuration
 SERVER_NAME=localhost
-HTTP_PORT=80
-HTTPS_PORT=443
-HTTP3_PORT=443
+HTTP_PORT=${HTTP_PORT}
+HTTPS_PORT=${HTTPS_PORT}
+HTTP3_PORT=${HTTPS_PORT}
 EOF
 
 # Add database-specific configuration
@@ -427,7 +431,8 @@ echoc "32" "=============================================================="
 echo ""
 echo "  Project Name:     ${APP_NAME}"
 echo "  Project Root:     $(pwd)"
-echo "  Application URL:  https://localhost"
+echo "  Application URL:  http://localhost:${HTTP_PORT} (HTTP)"
+echo "  Application URL:  https://localhost:${HTTPS_PORT} (HTTPS)"
 if [[ "$ENABLE_MAILER" == "y" ]] && [[ -n "$MAILPIT_WEB_PORT" ]]; then
     echo "  Mailpit (Email):  http://localhost:${MAILPIT_WEB_PORT}"
 elif [[ "$ENABLE_MAILER" == "n" ]]; then
