@@ -39,10 +39,10 @@ cleanup_on_error() {
 # Set the trap to call cleanup_on_error on any ERR signal
 trap cleanup_on_error ERR
 
-# --- 1. Receive User Input from Arguments (16 ARGUMENTS EXPECTED) ---
-if [ "$#" -ne 16 ]; then
-    echoc "31" "ERROR: This script must be called from setup.sh with 16 arguments."
-    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure> <db_type> <http_port> <https_port> <enable_minio> <minio_api_port> <minio_console_port>"
+# --- 1. Receive User Input from Arguments (18 ARGUMENTS EXPECTED) ---
+if [ "$#" -ne 18 ]; then
+    echoc "31" "ERROR: This script must be called from setup.sh with 18 arguments."
+    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure> <db_type> <http_port> <https_port> <enable_minio> <minio_api_port> <minio_console_port> <minio_root_user> <minio_root_password>"
     exit 1
 fi
 
@@ -62,6 +62,8 @@ HTTPS_PORT=${13}
 ENABLE_MINIO=${14}
 MINIO_API_PORT=${15}
 MINIO_CONSOLE_PORT=${16}
+MINIO_ROOT_USER=${17}
+MINIO_ROOT_PASSWORD=${18}
 
 # Convert app name to lowercase for Docker Compose project name
 PROJECT_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
@@ -210,8 +212,8 @@ if [[ "$ENABLE_MINIO" == "y" ]] && [[ -n "$MINIO_API_PORT" ]] && [[ -n "$MINIO_C
 # MinIO Configuration (Object Storage - Project-Specific)
 MINIO_API_PORT=${MINIO_API_PORT}
 MINIO_CONSOLE_PORT=${MINIO_CONSOLE_PORT}
-STORAGE_KEY=minioadmin
-STORAGE_SECRET=minioadmin
+STORAGE_KEY=${MINIO_ROOT_USER}
+STORAGE_SECRET=${MINIO_ROOT_PASSWORD}
 STORAGE_BUCKET=app-bucket
 STORAGE_REGION=us-east-1
 EOF
@@ -318,15 +320,15 @@ if [ -f .env.dev.example ]; then
     fi
     
     # Configure MinIO for shared instance if not using project-specific MinIO
-    if [[ ! "$ENABLE_MINIO" =~ ^[Yy]$ ]]; then
+    if [[ ! "$ENABLE_MINIO" =~ ^[Yy]$ ]] && [[ -n "$MINIO_ROOT_USER" ]]; then
         echoc "36" "Configuring to use shared MinIO instance..."
         # Add or update MinIO configuration to use host.docker.internal
         if ! grep -q "^STORAGE_ENDPOINT=" .env.dev.local 2>/dev/null; then
             echo "" >> .env.dev.local
             echo "# MinIO Object Storage configuration (using shared MinIO)" >> .env.dev.local
             echo "STORAGE_ENDPOINT=http://host.docker.internal:9000" >> .env.dev.local
-            echo "STORAGE_KEY=minioadmin" >> .env.dev.local
-            echo "STORAGE_SECRET=minioadmin" >> .env.dev.local
+            echo "STORAGE_KEY=${MINIO_ROOT_USER}" >> .env.dev.local
+            echo "STORAGE_SECRET=${MINIO_ROOT_PASSWORD}" >> .env.dev.local
             echo "STORAGE_BUCKET=app-bucket" >> .env.dev.local
             echo "STORAGE_REGION=us-east-1" >> .env.dev.local
         fi

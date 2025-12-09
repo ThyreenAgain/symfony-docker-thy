@@ -515,13 +515,26 @@ if [[ "$WANT_MINIO" == "y" ]]; then
             echoc "36" ""
             echoc "36" "   Creating shared MinIO container..."
             
+            # Get MinIO credentials first
+            echo ""
+            echoc "36" "--- MinIO Credentials for Shared Instance ---"
+            read -p "Enter MinIO Access Key (Default: 'minioadmin'): " SHARED_MINIO_USER
+            SHARED_MINIO_USER=${SHARED_MINIO_USER:-"minioadmin"}
+            
+            read -s -p "Enter MinIO Secret Key (Default: 'minioadmin'): " SHARED_MINIO_PASS
+            echo ""
+            if [ -z "$SHARED_MINIO_PASS" ]; then
+                SHARED_MINIO_PASS="minioadmin"
+            fi
+            echo ""
+            
             # Create a standalone MinIO container that persists across reboots
             if docker run -d \
                 --name shared-minio \
                 -p 9000:9000 \
                 -p 9001:9001 \
-                -e MINIO_ROOT_USER=minioadmin \
-                -e MINIO_ROOT_PASSWORD=minioadmin \
+                -e MINIO_ROOT_USER="${SHARED_MINIO_USER}" \
+                -e MINIO_ROOT_PASSWORD="${SHARED_MINIO_PASS}" \
                 --restart unless-stopped \
                 minio/minio server /data --console-address ":9001" 2>/dev/null; then
                 
@@ -679,13 +692,37 @@ else
     MAILPIT_WEB_PORT=""
 fi
 
-# 5. MinIO Ports (if enabled)
+# 5. MinIO Ports (only if project-specific MinIO)
 if [[ "$ENABLE_MINIO" == "y" ]]; then
     MINIO_API_PORT=$(prompt_for_port "MinIO API" 9000)
     MINIO_CONSOLE_PORT=$(prompt_for_port "MinIO Console" 9001)
 else
+    # Using shared MinIO - no custom ports needed
     MINIO_API_PORT=""
     MINIO_CONSOLE_PORT=""
+fi
+
+# 6. MinIO Credentials (if using MinIO - shared or project-specific)
+if [[ "$WANT_MINIO" == "y" ]]; then
+    echo ""
+    echoc "36" "--- MinIO Credentials ---"
+    
+    # MinIO Access Key
+    read -p "Enter MinIO Access Key (Default: 'minioadmin'): " MINIO_ROOT_USER
+    MINIO_ROOT_USER=${MINIO_ROOT_USER:-"minioadmin"}
+    
+    # MinIO Secret Key
+    read -s -p "Enter MinIO Secret Key (Default: 'minioadmin'): " MINIO_ROOT_PASSWORD
+    echo ""
+    if [ -z "$MINIO_ROOT_PASSWORD" ]; then
+        MINIO_ROOT_PASSWORD="minioadmin"
+    fi
+    
+    echoc "32" "✓ MinIO credentials configured"
+    echo ""
+else
+    MINIO_ROOT_USER=""
+    MINIO_ROOT_PASSWORD=""
 fi
 
 # Export for setup2.sh
@@ -696,6 +733,8 @@ export MAILPIT_SMTP_PORT
 export MAILPIT_WEB_PORT
 export MINIO_API_PORT
 export MINIO_CONSOLE_PORT
+export MINIO_ROOT_USER
+export MINIO_ROOT_PASSWORD
 
 echo ""
 echoc "32" "All configuration gathered. Starting setup..."
@@ -747,7 +786,7 @@ echo ""
 cd "$PROJECT_DIR"
 
 echoc "36" "--- Executing Setup Part 2 ---"
-if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE" "$DB_TYPE" "$HTTP_PORT" "$HTTPS_PORT" "$ENABLE_MINIO" "$MINIO_API_PORT" "$MINIO_CONSOLE_PORT"; then
+if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE" "$DB_TYPE" "$HTTP_PORT" "$HTTPS_PORT" "$ENABLE_MINIO" "$MINIO_API_PORT" "$MINIO_CONSOLE_PORT" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; then
     echoc "31" "============================================================"
     echoc "31" "ERROR: Setup failed."
     echoc "31" "Cleaning up temporary directory..."
