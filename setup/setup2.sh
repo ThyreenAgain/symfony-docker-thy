@@ -39,10 +39,10 @@ cleanup_on_error() {
 # Set the trap to call cleanup_on_error on any ERR signal
 trap cleanup_on_error ERR
 
-# --- 1. Receive User Input from Arguments (13 ARGUMENTS EXPECTED) ---
-if [ "$#" -ne 13 ]; then
-    echoc "31" "ERROR: This script must be called from setup.sh with 13 arguments."
-    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure> <db_type> <http_port> <https_port>"
+# --- 1. Receive User Input from Arguments (16 ARGUMENTS EXPECTED) ---
+if [ "$#" -ne 16 ]; then
+    echoc "31" "ERROR: This script must be called from setup.sh with 16 arguments."
+    echoc "31" "Usage: ./setup2.sh <app_name> <db_user> <db_password> <db_root_password> <db_database> <db_host_port> <mailpit_smtp_port> <mailpit_web_port> <enable_mailer> <enable_mercure> <db_type> <http_port> <https_port> <enable_minio> <minio_api_port> <minio_console_port>"
     exit 1
 fi
 
@@ -59,6 +59,9 @@ ENABLE_MERCURE=${10}
 DB_TYPE=${11}
 HTTP_PORT=${12}
 HTTPS_PORT=${13}
+ENABLE_MINIO=${14}
+MINIO_API_PORT=${15}
+MINIO_CONSOLE_PORT=${16}
 
 # Convert app name to lowercase for Docker Compose project name
 PROJECT_NAME=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
@@ -80,6 +83,11 @@ if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]]; then
 fi
 echoc "36" "Mailer Enabled:   ${ENABLE_MAILER}"
 echoc "36" "Mercure Enabled:  ${ENABLE_MERCURE}"
+echoc "36" "MinIO Enabled:    ${ENABLE_MINIO}"
+if [[ "$ENABLE_MINIO" =~ ^[Yy]$ ]]; then
+    echoc "36" "MinIO API Port:   ${MINIO_API_PORT}"
+    echoc "36" "MinIO Console:    ${MINIO_CONSOLE_PORT}"
+fi
 echo ""
 
 # Define DOCKER_COMPOSE_CMD early so the trap function can use it
@@ -106,6 +114,10 @@ fi
 
 if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
     COMPOSE_FILES="$COMPOSE_FILES -f compose.mercure.yaml"
+fi
+
+if [[ "$ENABLE_MINIO" =~ ^[Yy]$ ]]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f compose.minio.yaml"
 fi
 
 echoc "32" "✔ Using compose files: ${COMPOSE_FILES}"
@@ -188,6 +200,20 @@ if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
 CADDY_MERCURE_JWT_SECRET=!ChangeThisMercureHubJWTSecretKey!
 CADDY_MERCURE_URL=http://php/.well-known/mercure
 CADDY_MERCURE_PUBLIC_URL=https://localhost:443/.well-known/mercure
+EOF
+fi
+
+# Add MinIO configuration if project-specific MinIO is enabled
+if [[ "$ENABLE_MINIO" == "y" ]] && [[ -n "$MINIO_API_PORT" ]] && [[ -n "$MINIO_CONSOLE_PORT" ]]; then
+    cat >> .env << EOF
+
+# MinIO Configuration (Object Storage - Project-Specific)
+MINIO_API_PORT=${MINIO_API_PORT}
+MINIO_CONSOLE_PORT=${MINIO_CONSOLE_PORT}
+STORAGE_KEY=minioadmin
+STORAGE_SECRET=minioadmin
+STORAGE_BUCKET=app-bucket
+STORAGE_REGION=us-east-1
 EOF
 fi
 
@@ -291,6 +317,22 @@ if [ -f .env.dev.example ]; then
             .env.dev.local
     fi
     
+    # Configure MinIO for shared instance if not using project-specific MinIO
+    if [[ ! "$ENABLE_MINIO" =~ ^[Yy]$ ]]; then
+        echoc "36" "Configuring to use shared MinIO instance..."
+        # Add or update MinIO configuration to use host.docker.internal
+        if ! grep -q "^STORAGE_ENDPOINT=" .env.dev.local 2>/dev/null; then
+            echo "" >> .env.dev.local
+            echo "# MinIO Object Storage configuration (using shared MinIO)" >> .env.dev.local
+            echo "STORAGE_ENDPOINT=http://host.docker.internal:9000" >> .env.dev.local
+            echo "STORAGE_KEY=minioadmin" >> .env.dev.local
+            echo "STORAGE_SECRET=minioadmin" >> .env.dev.local
+            echo "STORAGE_BUCKET=app-bucket" >> .env.dev.local
+            echo "STORAGE_REGION=us-east-1" >> .env.dev.local
+        fi
+        echoc "32" "✔ Configured to use shared MinIO at host.docker.internal:9000"
+    fi
+    
     echoc "32" "✔ .env.dev.local created and configured."
 fi
 
@@ -311,6 +353,10 @@ fi
 
 if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
     echo "  - compose.mercure.yaml" >> .dockercompose
+fi
+
+if [[ "$ENABLE_MINIO" =~ ^[Yy]$ ]]; then
+    echo "  - compose.minio.yaml" >> .dockercompose
 fi
 
 echoc "32" "✔ .dockercompose file created for easy reference."
@@ -441,6 +487,12 @@ fi
 if [[ "$DB_TYPE" != "none" ]] && [[ -n "$DB_HOST_PORT" ]]; then
     echo "  Database Port:    localhost:${DB_HOST_PORT}"
 fi
+if [[ "$ENABLE_MINIO" == "y" ]] && [[ -n "$MINIO_API_PORT" ]]; then
+    echo "  MinIO API:        http://localhost:${MINIO_API_PORT}"
+    echo "  MinIO Console:    http://localhost:${MINIO_CONSOLE_PORT}"
+elif [[ "$ENABLE_MINIO" == "n" ]]; then
+    echo "  MinIO (Shared):   http://localhost:9000 (API), http://localhost:9001 (Console)"
+fi
 echo ""
 echo "Enabled Features:"
 if [[ "$ENABLE_MAILER" == "y" ]] && [[ -n "$MAILPIT_WEB_PORT" ]]; then
@@ -450,6 +502,11 @@ elif [[ "$ENABLE_MAILER" == "n" ]] && [[ -z "$MAILPIT_WEB_PORT" ]]; then
 fi
 if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
     echo "  ✓ Mercure Hub (Real-time messaging)"
+fi
+if [[ "$ENABLE_MINIO" == "y" ]] && [[ -n "$MINIO_API_PORT" ]]; then
+    echo "  ✓ MinIO (Object storage - project-specific)"
+elif [[ "$ENABLE_MINIO" == "n" ]]; then
+    echo "  ✓ MinIO (Object storage - using shared instance at localhost:9000)"
 fi
 echo ""
 echo "To start/stop services, use these commands:"

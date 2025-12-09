@@ -462,6 +462,93 @@ read -p "   Enable Mercure? (y/n, default: n): " ENABLE_MERCURE
 ENABLE_MERCURE=$(echo "${ENABLE_MERCURE:-n}" | tr '[:upper:]' '[:lower:]')
 echo ""
 
+# Ask about MinIO
+echoc "36" "🗄️ MinIO Object Storage:"
+echoc "36" "   S3-compatible object storage for files, images, and media."
+echoc "36" "   Useful for testing file upload and storage features."
+echo ""
+read -p "   Do you want to use MinIO for object storage? (y/n, default: n): " WANT_MINIO
+WANT_MINIO=$(echo "${WANT_MINIO:-n}" | tr '[:upper:]' '[:lower:]')
+echo ""
+
+ENABLE_MINIO=n
+SHARED_MINIO_CREATED=false
+
+if [[ "$WANT_MINIO" == "y" ]]; then
+    # Check for existing MinIO instances
+    EXISTING_MINIO=""
+    if command -v docker &> /dev/null; then
+        EXISTING_MINIO=$(docker ps --filter "ancestor=minio/minio" --format "{{.Names}}: {{.Ports}}" 2>/dev/null | head -1)
+    fi
+
+    if [ -n "$EXISTING_MINIO" ]; then
+        # Existing MinIO found
+        echoc "33" "   ⚠ EXISTING MINIO DETECTED: $EXISTING_MINIO"
+        echo ""
+        echoc "32" "   💡 TIP: MinIO can be shared across ALL projects!"
+        echo ""
+        echoc "36" "   Choose an option:"
+        echoc "36" "   1. Use the existing shared MinIO (recommended)"
+        echoc "36" "   2. Create a separate MinIO for this project"
+        echo ""
+        read -p "   Enter choice (1/2, default: 1): " MINIO_CHOICE
+        MINIO_CHOICE=${MINIO_CHOICE:-1}
+        if [[ "$MINIO_CHOICE" == "1" ]]; then
+            echoc "32" "   ✓ Will configure project to use existing shared MinIO"
+            ENABLE_MINIO=n
+        else
+            echoc "36" "   Will create project-specific MinIO"
+            ENABLE_MINIO=y
+        fi
+    else
+        # No existing MinIO found
+        echoc "32" "   ℹ No existing MinIO instance detected."
+        echo ""
+        echoc "36" "   Choose an option:"
+        echoc "36" "   1. Create a SHARED MinIO (recommended) - one instance for all projects"
+        echoc "36" "   2. Create MinIO inside THIS project's compose stack"
+        echo ""
+        read -p "   Create a shared standalone MinIO? (y/n, default: y): " CREATE_SHARED
+        CREATE_SHARED=$(echo "${CREATE_SHARED:-y}" | tr '[:upper:]' '[:lower:]')
+        
+        if [[ "$CREATE_SHARED" == "y" ]]; then
+            echoc "36" ""
+            echoc "36" "   Creating shared MinIO container..."
+            
+            # Create a standalone MinIO container that persists across reboots
+            if docker run -d \
+                --name shared-minio \
+                -p 9000:9000 \
+                -p 9001:9001 \
+                -e MINIO_ROOT_USER=minioadmin \
+                -e MINIO_ROOT_PASSWORD=minioadmin \
+                --restart unless-stopped \
+                minio/minio server /data --console-address ":9001" 2>/dev/null; then
+                
+                echoc "32" "   ✓ Shared MinIO created successfully!"
+                echoc "32" "   API: http://localhost:9000"
+                echoc "32" "   Console: http://localhost:9001"
+                echoc "32" "   Username: minioadmin"
+                echoc "32" "   Password: minioadmin"
+                echoc "32" "   This container will be used by all your projects."
+                SHARED_MINIO_CREATED=true
+                ENABLE_MINIO=n
+            else
+                echoc "31" "   ✗ Failed to create shared MinIO (port 9000 or 9001 might be in use)"
+                echoc "36" "   Falling back to project-specific MinIO..."
+                ENABLE_MINIO=y
+            fi
+        else
+            echoc "36" "   Will include MinIO in this project's compose stack"
+            ENABLE_MINIO=y
+        fi
+    fi
+else
+    echoc "36" "   MinIO will not be configured for this project."
+fi
+
+echo ""
+
 # --- Get DB Credentials (only if database selected) ---
 if [[ "$DB_TYPE" != "none" ]]; then
     echo "--- Database Credentials ---"
@@ -559,6 +646,9 @@ fi
 if [[ "$ENABLE_MAILER" == "y" ]]; then
     echoc "36" "                Mailpit SMTP=1025, Mailpit Web=8025"
 fi
+if [[ "$ENABLE_MINIO" == "y" ]]; then
+    echoc "36" "                MinIO API=9000, MinIO Console=9001"
+fi
 echoc "36" "Change these ONLY if you run multiple projects simultaneously."
 echo ""
 
@@ -589,12 +679,23 @@ else
     MAILPIT_WEB_PORT=""
 fi
 
+# 5. MinIO Ports (if enabled)
+if [[ "$ENABLE_MINIO" == "y" ]]; then
+    MINIO_API_PORT=$(prompt_for_port "MinIO API" 9000)
+    MINIO_CONSOLE_PORT=$(prompt_for_port "MinIO Console" 9001)
+else
+    MINIO_API_PORT=""
+    MINIO_CONSOLE_PORT=""
+fi
+
 # Export for setup2.sh
 export HTTP_PORT
 export HTTPS_PORT
 export DB_HOST_PORT
 export MAILPIT_SMTP_PORT
 export MAILPIT_WEB_PORT
+export MINIO_API_PORT
+export MINIO_CONSOLE_PORT
 
 echo ""
 echoc "32" "All configuration gathered. Starting setup..."
@@ -646,7 +747,7 @@ echo ""
 cd "$PROJECT_DIR"
 
 echoc "36" "--- Executing Setup Part 2 ---"
-if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE" "$DB_TYPE" "$HTTP_PORT" "$HTTPS_PORT"; then
+if ! ./setup2.sh "$APP_NAME" "$DB_USER" "$DB_PASSWORD" "$DB_ROOT_PASSWORD" "$DB_DATABASE" "$DB_HOST_PORT" "$MAILPIT_SMTP_PORT" "$MAILPIT_WEB_PORT" "$ENABLE_MAILER" "$ENABLE_MERCURE" "$DB_TYPE" "$HTTP_PORT" "$HTTPS_PORT" "$ENABLE_MINIO" "$MINIO_API_PORT" "$MINIO_CONSOLE_PORT"; then
     echoc "31" "============================================================"
     echoc "31" "ERROR: Setup failed."
     echoc "31" "Cleaning up temporary directory..."

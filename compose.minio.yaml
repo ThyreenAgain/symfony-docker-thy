@@ -1,0 +1,38 @@
+# Optional: Local Bucket support
+# Include this file to enable MinIO bucket functionality
+# Usage: docker compose -f compose.yaml -f compose.override.yaml -f compose.minio.yaml up
+
+services:
+  php:
+    environment:
+        STORAGE_ENDPOINT: "${STORAGE_ENDPOINT:-http://minio:9000}"
+        STORAGE_BUCKET: "${STORAGE_BUCKET:-app-bucket}"
+        STORAGE_REGION: "${STORAGE_REGION:-us-east-1}"
+        STORAGE_PREFIX: "${STORAGE_PREFIX:-}"
+        STORAGE_KEY: "${STORAGE_KEY:-minioadmin}"
+        STORAGE_SECRET: "${STORAGE_SECRET:-minioadmin}"
+        # File upload configuration
+        FILE_MAX_SIZE: "${FILE_MAX_SIZE:-10485760}"
+
+  ###> MinIO Object Storage ###
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: "${STORAGE_KEY:-minioadmin}"
+      MINIO_ROOT_PASSWORD: "${STORAGE_SECRET:-minioadmin}"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+  ###< MinIO Object Storage ###
+
+volumes:
+  minio_data:

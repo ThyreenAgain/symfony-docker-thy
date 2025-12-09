@@ -105,9 +105,9 @@ ENV FRANKENPHP_WORKER_CONFIG=watch
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 RUN set -eux; \
-	install-php-extensions \
-		xdebug \
-	;
+	install-php-extensions xdebug; \
+    composer require --dev squizlabs/php_codesniffer phpstan/phpstan friendsofphp/php-cs-fixer
+
 
 COPY --link frankenphp/conf.d/20-app.dev.ini $PHP_INI_DIR/app.conf.d/
 

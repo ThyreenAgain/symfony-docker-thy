@@ -23,6 +23,15 @@ ifneq ($(shell grep -E '^MAILPIT_WEB_PORT=' .env 2>/dev/null),)
     COMPOSE_FILES += -f compose.mailer.yaml
 endif
 
+# Add Storage compose file if configured (check for MINIO_API_PORT in .env)
+# If not set, will use external MinIO via STORAGE_ENDPOINT
+ifneq ($(shell grep -E '^MINIO_API_PORT=' .env 2>/dev/null),)
+    COMPOSE_FILES += -f compose.storage.yaml
+endif
+
+# Always include Redis
+#COMPOSE_FILES += -f compose.redis.yaml
+
 # Docker containers
 PHP_CONT = $(DOCKER_COMP) $(COMPOSE_FILES) exec php
 
@@ -44,10 +53,10 @@ build: ## Builds the Docker images
 	@$(DOCKER_COMP) $(COMPOSE_FILES) build --pull --no-cache
 
 up: ## Start the docker hub in detached mode (no logs)
-	@$(DOCKER_COMP) $(COMPOSE_FILES) up --detach
+	@XDEBUG_MODE=develop $(DOCKER_COMP) $(COMPOSE_FILES) up --detach
 
-up-debug: ## Start the docker hub in detached mode (no logs)
-	@$(DOCKER_COMP) $(COMPOSE_FILES) up --wait&set XDEBUG_MODE=debug --detach
+up-debug: ## Start the docker hub in detached mode with Xdebug enabled
+	@XDEBUG_MODE=debug $(DOCKER_COMP) $(COMPOSE_FILES) up --wait --detach
 
 
 start: build up ## Build and start the containers
@@ -106,8 +115,16 @@ install: ## Install the project dependencies
 	@$(COMPOSER) install --prefer-dist --no-progress --no-scripts --no-interaction
 	@$(PHP_CONT) yarn install
 
+migrations-generate: ## Generate migrations
+	@$(SYMFONY) doctrine:migrations:generate --no-interaction
+migrations-generate-test: ## Generate migrations for test environment
+	@$(SYMFONY) doctrine:migrations:generate --no-interaction --env=test
+
 migrate: ## Run database migrations
 	@$(SYMFONY) doctrine:migrations:migrate --no-interaction
+migrate-test: ## Run database migrations in test environment
+	@$(SYMFONY) doctrine:migrations:migrate --no-interaction --env=test
+
 
 assets: ## Build frontend assets
 	@$(PHP_CONT) yarn build
@@ -116,3 +133,16 @@ db-reset: ## Reset the database
 	@$(SYMFONY) doctrine:database:drop --force --if-exists
 	@$(SYMFONY) doctrine:database:create
 	@$(SYMFONY) doctrine:migrations:migrate --no-interaction
+
+worker: ## Run queue worker (consume ride_processing queue)
+	@$(SYMFONY) messenger:consume ride_processing -vv
+
+worker-all: ## Run queue worker (consume all queues)
+	@$(SYMFONY) messenger:consume async ride_processing route_processing -vv
+
+worker-failed: ## Show failed messages
+	@$(SYMFONY) messenger:failed:show
+
+worker-retry: ## Retry failed messages, pass the parameter "c=" to specify message ID
+	@$(eval c ?=)
+	@$(SYMFONY) messenger:failed:retry $(c)
