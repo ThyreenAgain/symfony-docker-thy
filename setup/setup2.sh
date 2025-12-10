@@ -431,10 +431,45 @@ else
 fi
 echo ""
 
+# --- 8. Install Recommended Symfony Packages ---
+echo "--- Installing Recommended Symfony Packages ---"
+
+# Track which packages to install
+PACKAGES_TO_INSTALL=""
+
+# Install ORM pack if database is configured
+if [[ "$DB_TYPE" != "none" ]]; then
+    echoc "36" "Database detected - will install symfony/orm-pack..."
+    PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL symfony/orm-pack"
+fi
+
+# Install Mercure bundle if Mercure is enabled
+if [[ "$ENABLE_MERCURE" =~ ^[Yy]$ ]]; then
+    echoc "36" "Mercure enabled - will install symfony/mercure-bundle..."
+    PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL symfony/mercure-bundle"
+fi
+
+# Install Mailer if Mailpit is configured
+if [[ "$ENABLE_MAILER" =~ ^[Yy]$ ]] || [[ -n "$MAILPIT_SMTP_PORT" ]]; then
+    echoc "36" "Mailer detected - will install symfony/mailer..."
+    PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL symfony/mailer"
+fi
+
+# Install packages if any were selected
+if [[ -n "$PACKAGES_TO_INSTALL" ]]; then
+    echoc "36" "Installing packages: ${PACKAGES_TO_INSTALL}..."
+    ${DOCKER_COMPOSE_CMD} ${COMPOSE_FILES} exec -T php composer require ${PACKAGES_TO_INSTALL} --no-interaction || {
+        echoc "33" "⚠ Some packages failed to install. You can install them manually later with:"
+        echoc "33" "  make composer c='require${PACKAGES_TO_INSTALL}'"
+    }
+    echoc "32" "✔ Symfony packages installed."
+else
+    echoc "36" "No additional Symfony packages needed."
+fi
 
 echo ""
 
-# --- 8. Database Migrations (if applicable) ---
+# --- 9. Database Migrations (if applicable) ---
 if [ -f composer.json ] && grep -q "doctrine/doctrine-bundle" composer.json 2>/dev/null; then
     echo "--- Running Database Migrations ---"
     echoc "36" "Running database migrations (if any)..."
@@ -446,7 +481,7 @@ if [ -f composer.json ] && grep -q "doctrine/doctrine-bundle" composer.json 2>/d
     fi
 fi
  
-# --- 9. Clean Up Installer Files ---
+# --- 10. Clean Up Installer Files ---
 echo --- Cleaning up installer files ---
 # Remove installer-specific files (not needed in user project)
 rm -f install.sh DATABASE_SELECTION_IMPLEMENTATION_SUMMARY.md ARCHITECTURE_PLAN_DB_SELECTION.md README.md TODO_AUTOMATED_TESTS.md KNOWN_ISSUES.md UPGRADE_NOTES.md OPTIONAL_FEATURES.md 2>/dev/null  || true
@@ -470,8 +505,6 @@ echoc "32" "✔ Installer files cleaned up."
 echo ""
 
 # --- 11. Success Message ---
-
-# --- 10. Success Message ---
 echo ""
 echoc "32" "=============================================================="
 echoc "32" "✅  SUCCESS: Your development environment is ready!"
