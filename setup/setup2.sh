@@ -512,10 +512,6 @@ elif [[ "$ENABLE_MINIO" == "n" ]]; then
 fi
 echo ""
 echo "To start/stop services, use these commands:"
-echo "  docker compose ${COMPOSE_FILES} up -d"
-echo "  docker compose ${COMPOSE_FILES} down"
-echo ""
-echo "Or use the Makefile shortcuts:"
 echo "  make up    # Start services"
 echo "  make down  # Stop services"
 echo "  make logs  # View logs"

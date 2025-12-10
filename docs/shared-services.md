@@ -28,8 +28,8 @@ services:
       - "9000:9000"   # S3 API
       - "9001:9001"   # Web console
     environment:
-      MINIO_ROOT_USER: velogrid
-      MINIO_ROOT_PASSWORD: velogrid123
+      MINIO_ROOT_USER: ChangeMeMinioUser
+      MINIO_ROOT_PASSWORD: ChangeMeMinioPassword123
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -54,16 +54,16 @@ In your project's `.env` file:
 # Do NOT set MINIO_API_PORT (this would include per-project MinIO)
 # Instead, point to the shared instance
 STORAGE_ENDPOINT=http://host.docker.internal:9000
-STORAGE_BUCKET=velogrid-rides
-STORAGE_KEY=velogrid
-STORAGE_SECRET=velogrid123
+STORAGE_BUCKET=your-project-bucket
+STORAGE_KEY=ChangeMeStorageKey
+STORAGE_SECRET=ChangeMeStorageSecret123
 ```
 
 3. **Create your project's bucket**:
 
 - Access MinIO console: `http://localhost:9001`
-- Login: `velogrid` / `velogrid123`
-- Create bucket: `velogrid-rides` (or whatever you set in `STORAGE_BUCKET`)
+- Login: `ChangeMeMinioUser` / `ChangeMeMinioPassword123`
+- Create bucket: `your-project-bucket` (or whatever you set in `STORAGE_BUCKET`)
 
 ### Per-Project MinIO (Alternative)
 
@@ -73,8 +73,8 @@ If you prefer per-project MinIO:
 ```env
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
-MINIO_ROOT_USER=velogrid
-MINIO_ROOT_PASSWORD=velogrid123
+MINIO_ROOT_USER=ChangeMeMinioRootUser
+MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123
 ```
 
 2. **The Makefile automatically includes `compose.minio.yaml`** when `MINIO_API_PORT` is set.
@@ -117,8 +117,8 @@ STORAGE_ENDPOINT=http://host.docker.internal:9000
 STORAGE_BUCKET=your-project-name
 
 # MinIO credentials (should match shared MinIO)
-STORAGE_KEY=velogrid
-STORAGE_SECRET=velogrid123
+STORAGE_KEY=ChangeMeStorageKey
+STORAGE_SECRET=ChangeMeStorageSecret123
 
 # S3 region (MinIO ignores this, but required)
 STORAGE_REGION=us-east-1
@@ -130,8 +130,8 @@ STORAGE_REGION=us-east-1
 # Include per-project MinIO container
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
-MINIO_ROOT_USER=velogrid
-MINIO_ROOT_PASSWORD=velogrid123
+MINIO_ROOT_USER=ChangeMeMinioRootUser
+MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123
 ```
 
 ## Troubleshooting
@@ -205,8 +205,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: velogrid
-      MINIO_ROOT_PASSWORD: velogrid123
+      MINIO_ROOT_USER: ChangeMeMinioUser
+      MINIO_ROOT_PASSWORD: ChangeMeMinioPassword123
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"

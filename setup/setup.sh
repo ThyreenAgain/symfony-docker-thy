@@ -702,10 +702,10 @@ else
     MINIO_CONSOLE_PORT=""
 fi
 
-# 6. MinIO Credentials (if using MinIO - shared or project-specific)
-if [[ "$WANT_MINIO" == "y" ]]; then
+# 6. MinIO Credentials (only for project-specific MinIO)
+if [[ "$ENABLE_MINIO" == "y" ]]; then
     echo ""
-    echoc "36" "--- MinIO Credentials ---"
+    echoc "36" "--- MinIO Credentials for Project-Specific Instance ---"
     
     # MinIO Access Key
     read -p "Enter MinIO Access Key (Default: 'minioadmin'): " MINIO_ROOT_USER
@@ -720,6 +720,10 @@ if [[ "$WANT_MINIO" == "y" ]]; then
     
     echoc "32" "✓ MinIO credentials configured"
     echo ""
+elif [[ "$SHARED_MINIO_CREATED" == true ]]; then
+    # Use the credentials from the shared instance creation
+    echoc "36" "Using shared MinIO credentials (from earlier configuration)"
+    # Credentials were already set during shared instance creation
 else
     MINIO_ROOT_USER=""
     MINIO_ROOT_PASSWORD=""

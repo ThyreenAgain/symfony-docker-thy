@@ -17,8 +17,8 @@ Each project runs its own MinIO container. This is the default behavior.
 ```env
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
-MINIO_ROOT_USER=velogrid
-MINIO_ROOT_PASSWORD=velogrid123
+MINIO_ROOT_USER=changeMeMinioRootUser
+MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123
 ```
 
 2. The Makefile will automatically include `compose.storage.yaml` when `MINIO_API_PORT` is set.
@@ -48,8 +48,8 @@ docker run -d \
   --restart unless-stopped \
   -p 9000:9000 \
   -p 9001:9001 \
-  -e MINIO_ROOT_USER=velogrid \
-  -e MINIO_ROOT_PASSWORD=velogrid123 \
+  -e MINIO_ROOT_USER=ChangeMeMinioRootUser \
+  -e MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123 \
   -v minio-shared-data:/data \
   minio/minio:latest server /data --console-address ":9001"
 ```
@@ -68,8 +68,8 @@ services:
       - "9000:9000"   # S3 API
       - "9001:9001"   # Web console
     environment:
-      MINIO_ROOT_USER: velogrid
-      MINIO_ROOT_PASSWORD: velogrid123
+      MINIO_ROOT_USER: ChangeMeMinioUser
+      MINIO_ROOT_PASSWORD: ChangeMeMinioPassword123
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -98,8 +98,8 @@ In each project's `.env` file, **do NOT set** `MINIO_API_PORT` (this prevents in
 STORAGE_ENDPOINT=http://host.docker.internal:9000
 STORAGE_BUCKET=your-project-name
 STORAGE_REGION=us-east-1
-STORAGE_KEY=velogrid
-STORAGE_SECRET=velogrid123
+STORAGE_KEY=ChangeMeStorageKey
+STORAGE_SECRET=ChangeMeStorageSecret123
 ```
 
 **Note**: 
@@ -125,15 +125,15 @@ Each project should use its own bucket. Create buckets via:
 2. **Command Line**:
 ```bash
 # Using MinIO client (mc)
-docker run --rm -it --network host minio/mc alias set local http://localhost:9000 velogrid velogrid123
+docker run --rm -it --network host minio/mc alias set local http://localhost:9000 ChangeMeMinioUser ChangeMeMinioPassword123
 docker run --rm -it --network host minio/mc mb local/your-bucket-name
 ```
 
 ### Bucket Naming Convention
 
 Use project-specific bucket names:
-- `velogrid-rides` - For velogrid project
-- `project2-uploads` - For another project
+- `project1-uploads` - For your first project
+- `project2-media` - For another project
 - `project3-media` - For another project
 
 This keeps data isolated per project while sharing the MinIO instance.
@@ -147,14 +147,14 @@ This keeps data isolated per project while sharing the MinIO instance.
 STORAGE_ENDPOINT=http://host.docker.internal:9000
 
 # Your project's bucket name
-STORAGE_BUCKET=velogrid-rides
+STORAGE_BUCKET=your-project-bucket
 
 # S3 region (MinIO ignores this, but required by AWS SDK)
 STORAGE_REGION=us-east-1
 
 # MinIO credentials (should match shared MinIO)
-STORAGE_KEY=velogrid
-STORAGE_SECRET=velogrid123
+STORAGE_KEY=ChangeMeStorageKey
+STORAGE_SECRET=ChangeMeStorageSecret123
 ```
 
 ### Optional for Per-Project MinIO
@@ -163,8 +163,8 @@ STORAGE_SECRET=velogrid123
 # Include per-project MinIO container
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
-MINIO_ROOT_USER=velogrid
-MINIO_ROOT_PASSWORD=velogrid123
+MINIO_ROOT_USER=ChangeMeMinioRootUser
+MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123
 ```
 
 ## Troubleshooting
@@ -276,8 +276,8 @@ docker compose up -d
 echo "MinIO started!"
 echo "S3 API: http://localhost:9000"
 echo "Console: http://localhost:9001"
-echo "User: velogrid"
-echo "Password: velogrid123"
+echo "User: ChangeMeMinioUser"
+echo "Password: ChangeMeMinioPassword123"
 ```
 
 Make it executable:
@@ -306,8 +306,8 @@ Each project runs its own MinIO container. This is the default behavior.
 ```env
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
-MINIO_ROOT_USER=velogrid
-MINIO_ROOT_PASSWORD=velogrid123
+MINIO_ROOT_USER=ChangeMeMinioRootUser
+MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123
 ```
 
 2. The Makefile will automatically include `compose.storage.yaml` when `MINIO_API_PORT` is set.
@@ -337,8 +337,8 @@ docker run -d \
   --restart unless-stopped \
   -p 9000:9000 \
   -p 9001:9001 \
-  -e MINIO_ROOT_USER=velogrid \
-  -e MINIO_ROOT_PASSWORD=velogrid123 \
+  -e MINIO_ROOT_USER=ChangeMeMinioRootUser \
+  -e MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123 \
   -v minio-shared-data:/data \
   minio/minio:latest server /data --console-address ":9001"
 ```
@@ -357,8 +357,8 @@ services:
       - "9000:9000"   # S3 API
       - "9001:9001"   # Web console
     environment:
-      MINIO_ROOT_USER: velogrid
-      MINIO_ROOT_PASSWORD: velogrid123
+      MINIO_ROOT_USER: ChangeMeMinioUser
+      MINIO_ROOT_PASSWORD: ChangeMeMinioPassword123
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -387,8 +387,8 @@ In each project's `.env` file, **do NOT set** `MINIO_API_PORT` (this prevents in
 STORAGE_ENDPOINT=http://host.docker.internal:9000
 STORAGE_BUCKET=your-project-name
 STORAGE_REGION=us-east-1
-STORAGE_KEY=velogrid
-STORAGE_SECRET=velogrid123
+STORAGE_KEY=ChangeMeStorageKey
+STORAGE_SECRET=ChangeMeStorageSecret123
 ```
 
 **Note**: 
@@ -414,16 +414,16 @@ Each project should use its own bucket. Create buckets via:
 2. **Command Line**:
 ```bash
 # Using MinIO client (mc)
-docker run --rm -it --network host minio/mc alias set local http://localhost:9000 velogrid velogrid123
+docker run --rm -it --network host minio/mc alias set local http://localhost:9000 ChangeMeMinioUser ChangeMeMinioPassword123
 docker run --rm -it --network host minio/mc mb local/your-bucket-name
 ```
 
 ### Bucket Naming Convention
 
 Use project-specific bucket names:
-- `velogrid-rides` - For velogrid project
-- `project2-uploads` - For another project
-- `project3-media` - For another project
+- `project1-uploads` - For your first project
+- `project2-media` - For another project
+- `project3-assets` - For yet another project
 
 This keeps data isolated per project while sharing the MinIO instance.
 
@@ -436,14 +436,14 @@ This keeps data isolated per project while sharing the MinIO instance.
 STORAGE_ENDPOINT=http://host.docker.internal:9000
 
 # Your project's bucket name
-STORAGE_BUCKET=velogrid-rides
+STORAGE_BUCKET=your-project-bucket
 
 # S3 region (MinIO ignores this, but required by AWS SDK)
 STORAGE_REGION=us-east-1
 
 # MinIO credentials (should match shared MinIO)
-STORAGE_KEY=velogrid
-STORAGE_SECRET=velogrid123
+STORAGE_KEY=ChangeMeStorageKey
+STORAGE_SECRET=ChangeMeStorageSecret123
 ```
 
 ### Optional for Per-Project MinIO
@@ -452,8 +452,8 @@ STORAGE_SECRET=velogrid123
 # Include per-project MinIO container
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
-MINIO_ROOT_USER=velogrid
-MINIO_ROOT_PASSWORD=velogrid123
+MINIO_ROOT_USER=ChangeMeMinioRootUser
+MINIO_ROOT_PASSWORD=ChangeMeMinioRootPassword123
 ```
 
 ## Troubleshooting
@@ -565,8 +565,8 @@ docker compose up -d
 echo "MinIO started!"
 echo "S3 API: http://localhost:9000"
 echo "Console: http://localhost:9001"
-echo "User: velogrid"
-echo "Password: velogrid123"
+echo "User: ChangeMeMinioUser"
+echo "Password: ChangeMeMinioPassword123"
 ```
 
 Make it executable:
